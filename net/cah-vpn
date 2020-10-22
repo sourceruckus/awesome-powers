@@ -1,0 +1,15 @@
+#!/bin/bash
+#
+# This script wraps around wg-vpn providing settings for the CAH VPN
+#
+
+# export all variables
+set -a
+
+#TEST_IP=10.1.20.4
+DNS_IP=10.1.20.4
+DNS_SEARCH="infrastructure.cah workstation.cah instrument.cah"
+DNS_NAME=srv-net.infrastructure.cah
+INTERFACES="wg-cah1 wg-cah2"
+
+exec $(dirname $0)/wg-vpn $*

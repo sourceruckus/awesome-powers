@@ -1,0 +1,24 @@
+# -*- conf -*-
+#
+# Similar to cah-wait-online.service, this service is inserted to force the
+# drbd service to wait for a particular ip to be reachable.
+#
+[Unit]
+Description=wait for drbd network connectivity
+Requires=NetworkManager.service
+After=NetworkManager.service
+Before=network-online.target
+#Before=drbd.service
+#
+# FIXME: what was drbd.service replaced with network-online.service?  i don't
+#        recall doing that... 
+#
+
+[Service]
+Type=oneshot
+#ExecStart=/root/bin/wait-for-host 192.168.10.2
+ExecStart=/scrap/awesome-powers/net/drbd-wait-online
+RemainAfterExit=yes
+
+[Install]
+WantedBy=network-online.target

@@ -1,0 +1,146 @@
+#!/bin/bash
+
+###############################################################################
+# IO Scheduler (noop vs deadline vs cfq (default)
+###############################################################################
+#
+# https://searchdatacenter.techtarget.com/tip/Consider-these-Linux-I-O-scheduler-options-for-storage-performance
+# https://access.redhat.com/solutions/5427
+#
+# domU should probably all be noop, dom0 we should benchmark.  most online refs
+# recommend deadline.  and it looks like frodo/sam are already using
+# mq-deadline for all disks...
+#
+# looks like all my domUs are 'none' by default, so blockfront must be doing
+# that smartly.
+
+
+###############################################################################
+# RAID optimizations (speed limits, stripe size, readahead, NCQ)
+###############################################################################
+#
+# https://www.cyberciti.biz/tips/linux-raid-increase-resync-rebuild-speed.html
+# https://h3x.no/2011/07/09/tuning-ubuntu-mdadm-raid56
+# https://raid.wiki.kernel.org/index.php/Performance
+# https://ubuntuforums.org/showthread.php?t=1494846
+#
+# NOTE: I haven't actually benchmarked any of these yet... probably should
+#
+# https://www.thomas-krenn.com/en/wiki/Linux_I/O_Performance_Tests_using_dd
+#
+# min/max resync speeds
+#
+# NOTE: Technically, this could be in /etc/sysctl.conf... I stuck it in here to
+#       keep it together w/ the other optimizations
+#
+# ~50 MB/s
+echo 50000 > /proc/sys/dev/raid/speed_limit_min
+# ~2 GB/s (suggested for 4-5 disk array)
+echo 2000000 > /proc/sys/dev/raid/speed_limit_max
+# stripe_cache_size (default 256)
+#
+# throughput test: dd if=/dev/zero of=/scrap2/FOO bs=1G count=4 oflag=direct (look at speed)
+# latency test: dd if=/dev/zero of=/scrap2/FOO bs=4k count=1000 oflag=direct (look at time)
+#
+# size: throughput (MB/s) latency (s)
+#   256: 180 .25
+#  1024: 190 .25
+#  4096: 230 .25
+#  6144: 185 .24
+#  8192: 180 .25
+# 16386: 185 .24
+# 32768: 190 .25
+#
+# FIXME: would be better if we autodetected the raid device (or did all of
+#        them?)
+#
+echo 4096 > /sys/block/md127/md/stripe_cache_size
+# disable NCQ (default depth 32)
+#
+# FIXME: should i just blanket all SATA devices w/ this?  NCQ apparently fights
+#        with kernel IO scheduling, which is enabled by default.
+#
+#        Sounds like I really only want this for RAID component devices, unless
+#        benchmarking proves otherwise.  In a vaccuum, w/out RAID, googling
+#        makes it sound super beneficial bordering on critical to keep on.
+#
+#        https://strugglers.net/~andy/blog/2015/08/09/ssds-and-linux-native-command-queuing/
+#
+# FIXME: benchmarking on frodo doesn't reveal much/any difference here... in
+#        fact, throughput seems slightly worse...
+#
+#pushd /sys/block
+#for i in sd[bcde]; do
+#    echo 1 > $i/device/queue_depth
+#done
+#popd
+# readahead (in 512 byte sectors)
+#
+# thoughput test: dd if=/scrap2/FOO of=/dev/null bs=512M iflag=direct
+#
+#  1536: 417
+# 32768: 417
+# 32768: 415
+#
+# bs=16K
+#
+#   1536: 185
+#  32768: 185
+# 524288: 190
+#
+# FIXME: try 1536 (default, 768K), 4096 (2M), 32768 (16M), 65536 (32M), 262144
+#        (128M), 524288 (256M)
+#
+# FIXME: actually, default for md127 is 6144 (3M)... odd.  and each component
+#        device is 256 (128K)...?
+#
+# FIXME: should i do all block devices?  all md devices?  just specific ones?
+#
+#blockdev --setra 4096 /dev/md127
+
+
+
+###############################################################################
+# DRBD optimizations
+###############################################################################
+#
+# https://www.linbit.com/drbd-user-guide/drbd-guide-9_0-en/#p-performance
+# https://www.linbit.com/drbd-and-the-sync-rate-controller-part-3/
+# https://wiki.mikejung.biz/DRBD
+#
+# These are all taken care of in individual resource files, except for the
+# recommendation of using the deadline io scheduler, which we already are.
+#
+
+
+
+###############################################################################
+# Xen opimizations (4 pinned CPUs, sched-credit 512 or 1024)
+###############################################################################
+#
+# NOTE: The other part of this is pinning dom0 to the 1st 4 cores, then keeping
+#       all domUs off them, ensuring dom0 always has CPU time to handle domU
+#       IO.
+#
+if [ -f /proc/xen/capabilities ] ; then
+    xl sched-credit -d 0 -w 512 || xl sched-credit2 -d 0 -w 512
+fi
+
+
+
+###############################################################################
+# prep 3way drbd lower resources
+###############################################################################
+#
+# use the (not written yet) 3wayres utility to prep all the 3way drbd resources
+# and have this script's service file say "Before=xendomains.service".
+#
+# FIXME: maybe i should put this one in a different script w/ a different
+#        service, so that i can sync /root/bin from frodo/sam to strider w/out
+#        messing things up.
+#
+#        actually... that's true for the raid and hdd tweaking above, too...
+#
+# FIXME: should i search through /etc/drbd.d or /vm/*.cfg for resources
+#        here...?  I'm thinking /etc/drbd.d, searching for any stacked
+#        resource.

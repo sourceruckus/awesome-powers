@@ -1,0 +1,16 @@
+# -*- conf -*-
+#
+# Special disk tuning for dom0s
+#
+[Unit]
+Description=custom disk tuning
+After=local-fs.target
+Wants=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/scrap/awesome-powers/disk/tune-disks
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

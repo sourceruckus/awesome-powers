@@ -1,0 +1,23 @@
+#!/bin/sh -e
+#
+# Raise/Lower CAH WireGuard VPN when we raise an interface.
+#
+# FIXME: this should really check to see if the interface that called us is
+#        responsible for our route to the internet before starting/stopping the
+#        vpn.  otherwise, raising/lowering secondary interfaces blows up the
+#        vpn.
+#
+case "$2" in
+    up)
+        /scrap/awesome-powers/net/vpn-cah start
+        ;;
+    down)
+        /scrap/awesome-powers/net/vpn-cah stop
+        ;;
+    *)
+        echo "$0: called with unknown action \`$2'" 1>&2
+        exit 0
+        ;;
+esac
+
+exit 0

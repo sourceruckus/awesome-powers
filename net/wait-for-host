@@ -1,0 +1,9 @@
+#!/bin/bash
+
+timeout=15
+for x in $(seq $timeout); do
+    ping -c1 -W1 $1 && exit 0
+    sleep 1
+done
+
+exit 1

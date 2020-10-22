@@ -1,0 +1,78 @@
+#!/bin/bash
+
+# interfaces
+vlans="10 20 30 40"
+
+
+doit()
+{
+    case $1 in
+        up)
+            ipaddr="ip addr add"
+            wgcmd="up"
+            ;;
+        down)
+            ipaddr="ip addr del"
+            wgcmd="down"
+            ;;
+        *)
+            echo "invalid usage"
+            exit 1
+            ;;
+    esac
+
+    # add/remove the .1 address to/from all vlan interfaces
+    for x in $vlans; do
+        go="$ipaddr 10.1.$x.1/24 dev eth0.$x"
+        echo $go
+        eval $go
+    done
+
+    # raise/lower wg-cah (our VPN)
+    go="wg-quick $wgcmd wg-cah"
+    echo $go
+    eval $go
+    
+    # raise/lower wg-labriola (VPN to labriola)
+    #go="wg-quick $wgcmd wg-labriola"
+    #echo $go
+    #eval $go
+    
+    # anything else?
+}
+
+
+showit()
+{
+    echo "# $*"
+    eval $*
+    echo
+}
+
+
+case $1 in
+    start)
+        doit up
+        ;;
+    stop)
+        doit down
+        ;;
+    restart)
+        doit down
+        sleep 1
+        doit up
+        ;;
+    status)
+        showit wg show
+        if [ "$(wg show | wc -l)" != 0 ]; then
+            showit ip addr show
+            showit route
+	fi
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|status}"
+        exit 1
+        ;;
+esac
+
+exit 0

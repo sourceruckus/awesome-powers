@@ -1,0 +1,20 @@
+# -*- conf -*-
+#
+# This script doesn't do anything to the existing secondary router, if any.  It
+# just tries to set this box up as the secondary router.  When stopped, it
+# disables the secondary stuff.  It does NOT transition entirely to primary,
+# there's another service for that.
+#
+[Unit]
+Description=additional network tweaks for the secondary router
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/srap/awesome-powers/net/make-secondary-router start
+ExecStop=/srap/awesome-powers/net/make-secondary-router stop
+
+[Install]
+WantedBy=multi-user.target

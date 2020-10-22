@@ -1,0 +1,69 @@
+#!/bin/bash
+#
+# NOTE: This is slightly odd... we're really going to track the pid of
+#       wineserver, because when that gets killed, all wine services exit as
+#       well.
+#
+# NOTE: The wine stuff NEEDS to run as non-root user
+#
+WINEUSER=nautilus
+PIDFILE=/run/AVImarkServer/pid
+
+start()
+{
+    # check if already running
+    #
+    # FIXME: nothing actually removes PIDFILE here... systemd will remove it, I
+    #        think, but if we execute this script by hand we'll have to remove
+    #        the pidfile by hand.  actually, there's no stop code in here at
+    #        all...
+    #
+    if [ -f $PIDFILE ]; then
+        echo "pidfile $PIDFILE exists"
+        exit 1
+    fi
+
+    runuser -l $WINEUSER -c "wineserver -p" || exit 1
+    pid=$(pidof wineserver)
+    [ -n "$pid" ] || exit 1
+    mkdir -p $(dirname $PIDFILE)
+    echo $pid > $PIDFILE
+
+    # AVImark Server service is set to autostart, so if we simply query what IS
+    # runing, it gets autostarted.
+    runuser -l $WINEUSER -c "wine net start 2>/dev/null"
+    if [ $? -ne 0 ]; then
+        runuser -l $WINEUSER -c "wineserver -k"
+        exit 1
+    fi
+    # Let's try to double-check that it's really runing w/ a 2nd call piped
+    # into grep
+    runuser -l $WINEUSER -c "wine net start 2>/dev/null" | grep -q "AVImark Server"
+    if [ $? -ne 0 ]; then
+        runuser -l $WINEUSER -c "wineserver -k"
+        exit 1
+    fi
+}
+
+
+stop()
+{
+    runuser -l $WINEUSER -c "wineserver -k"
+    rm -f $PIDFILE
+}
+
+
+case $1 in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    *)
+        echo "Usage: $0 {start|stop}"
+        exit 1
+        ;;
+esac
+
+exit 0

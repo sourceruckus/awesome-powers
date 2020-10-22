@@ -1,0 +1,15 @@
+# -*- conf -*-
+#
+[Unit]
+Description=AVImarkServer service (via Wine)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=forking
+ExecStart=/srap/awesome-powers/wine/AVImarkServer start
+PIDFile=/run/AVImarkServer/pid
+ExecStop=/srap/awesome-powers/wine/AVImarkServer stop
+
+[Install]
+WantedBy=multi-user.target

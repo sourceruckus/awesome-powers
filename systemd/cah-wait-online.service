@@ -1,0 +1,23 @@
+# -*- conf -*-
+#
+# This unit file is needed on systems with multiple interfaces, when you want
+# network-only.target to wait for a particular one.  This seem to even be
+# needed when you've got xenbr0 and xenbr0.20... as otherwise network-online
+# can happen after the IPless xenbr0 is raised and you're still waiting for
+# DHCP to finish its dance on xenbr0.20.  Or maybe it was because eth0 was up
+# before xenbr0 or xenbr0.20...?  something like that.  either way, this fixes
+# it.
+#
+[Unit]
+Description=wait for cah network connectivity
+Requires=NetworkManager.service
+After=NetworkManager.service
+Before=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/scrap/awesome-powers/net/cah-wait-online
+RemainAfterExit=yes
+
+[Install]
+WantedBy=network-online.target

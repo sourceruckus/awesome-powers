@@ -1,0 +1,128 @@
+#!/bin/bash
+#
+# This is a slightly bigger task than just using wg-quick because:
+#
+# 1. wg-quick uses resolvconf for DNS settings, and our system uses
+#    systemd-resolv, which has different syntax.  So, we can't let qg-quick do
+#    the DNS setup.
+#
+# 2. While only one of the routers will have it's WireGuard interface up, there
+#    doesn't seem to be any feedback from wg-quick as to wether we are
+#    sucessfully connected.  So, we need to do a little dance and manually
+#    check for connectivity.
+
+
+#TEST_IP=10.1.20.4
+#DNS_IP=10.1.20.4
+#DNS_SEARCH="infrastructure.cah workstation.cah instrument.cah"
+#DNS_NAME=srv-net.infrastructure.cah
+#INTERFACES="wg-cah1 wg-cah2"
+
+if [ -z "$TEST_IP" ]; then
+    TEST_IP=$DNS_IP
+fi
+if [ -z "$TEST_IP" ]; then
+    echo TEST_IP required
+    exit 0
+fi
+if [ -z "INTERFACES" ]; then
+    echo no INTERFACES specified
+    exit 0
+fi
+
+
+try_interface()
+{
+    # raise it
+    wg-quick up $1
+
+    # try pinging test ip
+    ping -w2 -R $TEST_IP
+    if [ $? -ne 0 ]; then
+        echo "$1 is NOT reachable"
+        return -1
+    fi
+    echo "$1 is reachable"
+    
+    # add dns
+    go="systemd-resolve -i $1 --set-dns=$DNS"
+    for x in $DNS_SEARCH; do
+        go+=" --set-domain=$x"
+    done
+    echo $go
+    eval $go
+
+    # check dns
+    host $DNS_NAME
+    if [ $? -ne 0 ]; then
+        echo "$1 DNS is NOT working"
+        return -1
+    fi
+    echo "$1 DNS is working"
+
+    return 0
+}
+
+
+start()
+{
+    for x in $INTERFACES; do
+        try_interface $x
+        if [ $? -eq 0 ]; then
+            echo "Successfully configured $x"
+            return 0
+        fi
+        # otherwise, we've failed the check, so teardown and keep going
+        echo "$x not usable"
+        wg-quick down $x
+    done
+
+    # if we get here, we've tried all the interfaces and they all failed.
+    echo "All interfaces tried, none usable"
+    return -1
+}
+
+
+stop()
+{
+    for x in $INTERFACES; do
+        wg-quick down $x
+    done
+}
+
+
+showit()
+{
+    echo "# $*"
+    eval $*
+    echo 
+}
+
+
+case $1 in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart)
+        stop
+        sleep 1
+        start
+        ;;
+    status)
+        showit wg show
+        if [ "$(wg show | wc -l)" != 0 ]; then
+            showit ip addr show
+            showit route
+            showit systemd-resolve --status --no-pager
+        fi
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|status}"
+        exit 1
+        ;;
+esac
+
+exit 0
