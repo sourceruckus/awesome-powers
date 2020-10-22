@@ -9,10 +9,10 @@
 #
 case "$2" in
     up)
-        /scrap/awesome-powers/net/vpn-cah start
+        /scrap/awesome-powers/net/cah-vpn start
         ;;
     down)
-        /scrap/awesome-powers/net/vpn-cah stop
+        /scrap/awesome-powers/net/cah-vpn stop
         ;;
     *)
         echo "$0: called with unknown action \`$2'" 1>&2

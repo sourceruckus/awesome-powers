@@ -10,13 +10,19 @@
 #    doesn't seem to be any feedback from wg-quick as to wether we are
 #    sucessfully connected.  So, we need to do a little dance and manually
 #    check for connectivity.
-
-
-#TEST_IP=10.1.20.4
-#DNS_IP=10.1.20.4
-#DNS_SEARCH="infrastructure.cah workstation.cah instrument.cah"
-#DNS_NAME=srv-net.infrastructure.cah
-#INTERFACES="wg-cah1 wg-cah2"
+#
+# Environment Variables:
+#
+# INTERFACES - space seperated list of wireguard interfaces to try
+#
+# TEST_IP - used to test connectivity (DNS_IP will be used if this isn't set)
+#
+# DNS_IP - IP of remote DNS server (OPTIONAL)
+#
+# DNS_SEARCH - spaced seperated list of domains to add to dns search path
+#
+# DNS_NAME - hostname to use for testing DNS
+#
 
 if [ -z "$TEST_IP" ]; then
     TEST_IP=$DNS_IP
@@ -43,9 +49,14 @@ try_interface()
         return -1
     fi
     echo "$1 is reachable"
-    
+
+    if [ -z "DNS_IP" ]; then
+        # no DNS, we're all done here
+        return 0
+    fi
+
     # add dns
-    go="systemd-resolve -i $1 --set-dns=$DNS"
+    go="systemd-resolve -i $1 --set-dns=$DNS_IP"
     for x in $DNS_SEARCH; do
         go+=" --set-domain=$x"
     done
