@@ -1,0 +1,23 @@
+#!/bin/bash
+#
+# script for doing remote zfs replication
+#
+# NOTE: All output appended to logfile, which is then mailed and removed each
+#       night
+
+
+# pick a dom0 (follow srv-router2?  check for no guests?)
+#
+# FIXME: for now, only merry is using zfs... so we just pick him.
+#
+server=merry
+
+# FIXME: config file
+local_ds=zp00/syncoid
+
+# iterate over datasets
+while read ds; do
+    echo syncoid $server:$ds $local_ds/$ds
+done < <(ssh $server zfs list -o name -Hr zp00/cah)
+
+exit 0

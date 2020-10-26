@@ -1,0 +1,17 @@
+# -*- mode: sh -*-
+
+MAILTO=michael.d.labriola@gmail.com
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# FIXME: Should we try and sneak hourlies in here?  I'll have to test things
+#        out... see how badly this impacts performace at CAH.
+
+# pull from cah servers nightly
+#
+# NOTE: amanda backups run at 1AM, gandalf reconnects drbd at 10PM.
+#
+0 0 * * * root /scrap/awesome-powers/sync/zfs-replication >> /var/log/zfs-replication
+
+# this will block if replication still running until it finishes, then mail the
+# logfile and remove it.
+0 4 * * * root /scrap/awesome-powers/logs/mail-and-purge-logfile /var/log/zfs-replication $MAILTO
