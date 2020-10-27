@@ -6,6 +6,10 @@
 #       night
 
 
+# FIXME: ok, we need to make sure that the previous invocation isn't still
+#        running.  super unlikely if we only run this daily, but definately
+#        possible if we start running hourly over slow internet connection.
+
 # pick a dom0 (follow srv-router2?  check for no guests?)
 #
 # FIXME: for now, only merry is using zfs... so we just pick him.
@@ -13,11 +17,27 @@
 server=merry
 
 # FIXME: config file
-local_ds=zp00/syncoid
+local_ds=zp00/remotes/cah
+remote_ds=zp00/cah
+remote_user=root
+exclude=vtapes
+recursive="-r"
 
 # iterate over datasets
-while read ds; do
-    echo syncoid $server:$ds $local_ds/$ds
-done < <(ssh $server zfs list -o name -Hr zp00/cah)
+#
+# FIXME: could have done 'syncoid -r $server:zp00/cah $local_ds/zp00/cah'
+#        instead of looping over output?
+#
+#while read ds; do
+#    echo syncoid $server:$ds $local_ds/$ds
+#done < <(ssh $server zfs list -o name -Hr zp00/cah)
+
+go="syncoid $recursive "
+for x in $exclude; do
+    go+=" --exclude=$x"
+done
+echo "$(dirname $local_ds) needs to exist, but not $local_ds"
+go+=" $remote_user@$server:$remote_ds $local_ds"
+echo $go
 
 exit 0
