@@ -3,18 +3,11 @@
 MAILTO=michael.d.labriola@gmail.com
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-# every 5 minutes, between 7am and 11pm (not including 11pm), zfs snapshot
-# anything in /zp00/cah w/ com.sun:auto-snapshot set to true
-#
-#*/5 7-23 * * * zfs-auto-snapshot -qg -lfrequent -k139 -r --default-exclude zp00/cah
-
-# FIXME: still can't decide if we should do all datasets or specify -r
-#        zp00/cah.  either way, we'll exclude via com.sun:auto-snapshot=false
-#
-# FIXME: also, i was originally going to exclude replicated remote
-#        datasets... but, if we start using snapshots INSTEAD of amanda, i
-#        won't have anything but the replica off-site because the snapshots
-#        don't get replicated.
+# NOTE: When using this along with zfs-replication, you'll want to set
+#       com.sun:auto-snapshot=false on your remotes dataset.  The replication
+#       scripts get snapshots from the remote hosts, which should already be
+#       running zfs-auto-snapshot, in which case there's no need to duplicate
+#       that on this side.
 
 
 # keep 3 hours worth of every-5-mins snapshots
