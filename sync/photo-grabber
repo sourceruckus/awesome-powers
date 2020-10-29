@@ -1,0 +1,55 @@
+#!/bin/bash
+#
+# The idea behind this when I wrote it was setup a symlink tree where each dir
+# was a device we're syncing from (e.g., mikephone, bethphone).  Within each of
+# those would be a symlink to photo-grabber and a local .conf file.
+#
+
+topdir=$(dirname $0)
+
+. $topdir/photo-grabber.conf
+
+log=$topdir/sync.log
+lock=$topdir/.lock
+
+stamp=$(date +"%Y-%m-%dT%H-%M-%S")
+
+if [ "$1" = "--dry-run" ] || [ "$1" = "-n" ]; then
+    dryrun="-n"
+else
+    dryrun=""
+    exec 1>>$log
+    exec 2>&1
+fi
+
+# make sure we're not already running
+[ -e $lock ] && exit 0
+
+# make sure host is there
+ping -qc1 $sync_host >/dev/null 2>&1 || exit 0
+
+echo "--- START: $stamp ----------------------------------------------------"
+touch $lock
+
+go="rsync -va $dryrun -e \"ssh -p 2222\" --exclude-from=$topdir/EXCLUDES"
+go+=" --no-perms --modify-window=1 --omit-dir-times"
+go+=" $sync_host:$sync_sourcedir"
+go+=" $topdir/current/"
+
+echo $go
+eval $go
+
+# FIXME: ok, chmod doesn't do -H...  and chown -H apparently wants
+#       root privs... i can't win
+#
+go="chmod u+rw,g+rw,o+r-w -R $topdir/current"
+echo $go
+eval $go
+
+echo "you should do this as root:"
+go="chown -RH mike:1200 $topdir/current"
+echo $go
+#eval $go
+
+echo "--- END: $stamp (at $(date +"%Y-%m-%dT%H-%M-%S")) -----------------------------"
+rm -f $lock
