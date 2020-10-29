@@ -3,41 +3,70 @@
 # script for doing remote zfs replication
 #
 # NOTE: All output appended to logfile, which is then mailed and removed each
-#       night
-
-
-# FIXME: ok, we need to make sure that the previous invocation isn't still
-#        running.  super unlikely if we only run this daily, but definately
-#        possible if we start running hourly over slow internet connection.
-
-# pick a dom0 (follow srv-router2?  check for no guests?)
+#       night (log rotation and mailing is not this script's responsibility).
 #
-# FIXME: for now, only merry is using zfs... so we just pick him.
-#
-server=merry
 
-# FIXME: config file
-local_ds=zp00/remotes/cah
-remote_ds=zp00/cah
-remote_user=root
-exclude=vtapes
-recursive="-r"
-
-# iterate over datasets
+# parse our config
 #
-# FIXME: could have done 'syncoid -r $server:zp00/cah $local_ds/zp00/cah'
-#        instead of looping over output?
+# FIXME: or /scrap/awesome-powers/config/sync/zfs-replication.conf?  or simply
+#        $(dirname $0)/zfs-replication.conf?  or $0.conf?
 #
-#while read ds; do
-#    echo syncoid $server:$ds $local_ds/$ds
-#done < <(ssh $server zfs list -o name -Hr zp00/cah)
+. $0.conf
 
-go="syncoid $recursive "
+
+lock=$0.lock
+stamp=$(date +"%Y-%m-%dT%H-%M-%S")
+
+# FIXME: we can do better than this...
+if [ "$1" = "--dry-run" ] || [ "$1" = "-n" ]; then
+    dryrun="-n"
+else
+    dryrun=
+fi
+
+# make sure we're not already running
+[ -e $lock ] && exit 0
+
+echo "--- START: $stamp ----------------------------------------------------"
+
+# pick remote source from $servers
+server=
+for x in $servers; do
+    # FIXME: not really sure how to pick one...  follow srv-router2?  check for
+    #        no guests?  for now, only merry is using zfs, so we just pick him.
+    if [ "$x" = "merry" ]; then
+        server=$x
+        break
+    fi
+done
+if [ -z "$server" ]; then
+    echo "ERROR: no server found"
+    exit 1
+fi
+echo "selected server $server for replication"
+
+# we lock after the remote server check so that we get output warning us that
+# our servers are down (because they shouldn't be), but we don't lock until
+# we're really doing work.
+touch $lock
+
+
+if [ "$recursive" = "true" -o "$recursive" = "1" -o "$recursive" = "yes" ]; then
+    recursive="-r"
+else
+    recursive=
+fi
+
+go="syncoid $recursive"
 for x in $exclude; do
     go+=" --exclude=$x"
 done
-echo "$(dirname $local_ds) needs to exist, but not $local_ds"
+#echo "$(dirname $local_ds) needs to exist, but not $local_ds"
 go+=" $remote_user@$server:$remote_ds $local_ds"
 echo $go
+if [ -z "$dryrun" ]; then
+    eval $go || exit 1
+fi
 
+rm -f $lock
 exit 0
