@@ -13,8 +13,12 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 #
 # NOTE: amanda backups run at 1AM, gandalf reconnects drbd at 10PM.
 #
-0 0 * * * root /scrap/awesome-powers/sync/zfs-replication >> /var/log/zfs-replication 2>&1
+0 0 * * * root /scrap/awesome-powers/sync/zfs-replication
 
-# this will block if replication still running until it finishes, then mail the
-# logfile and remove it.
-0 4 * * * root /scrap/awesome-powers/logs/mail-and-purge-logfile /var/log/zfs-replication $MAILTO
+# rotate log files
+#
+# NOTE: This will block if replication still running until it finishes, then
+#       mail the logfile and remove it.
+#
+export MAILTO
+0 4 * * * root /scrap/awesome-powers/logs/mail-and-purge-logfile sync/zfs-replication

@@ -14,6 +14,7 @@
 . $0.conf
 
 
+log=$0.log
 lock=$0.lock
 stamp=$(date +"%Y-%m-%dT%H-%M-%S")
 
@@ -22,6 +23,9 @@ if [ "$1" = "--dry-run" ] || [ "$1" = "-n" ]; then
     dryrun="-n"
 else
     dryrun=
+    # when not dryrun, we redirect all output to the logfile
+    exec 1>>$log
+    exec 2>&1
 fi
 
 # make sure we're not already running

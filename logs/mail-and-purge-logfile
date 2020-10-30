@@ -1,0 +1,48 @@
+#!/bin/bash
+#
+# Mail logfile to $MAILTO, then remove logfile.  The logfile is assumed to be
+# the name of the specified script w/ .log at the end.
+#
+
+prog=$1
+log=$prog.log
+lock=$prog.lock
+
+if [ -z "$MAILTO" ]; then
+    echo "ERROR: \$MAILTO not set"
+    exit 1
+fi
+if [ -z "$prog" ]; then
+    echo "ERROR: program argument expected"
+    exit 1
+fi
+if [ ! -f $prog ]; then
+    echo "ERROR: no such file '$prog'"
+    exit 1
+fi
+if [ ! -f $log ]; then
+    echo "ERROR: '$log' doesn't exist"
+    exit 1
+fi
+
+# wait for script to finish if running
+while [ -f $lock ]; do
+    sleep 1
+done
+
+# rotate the logfile
+#
+# FIXME: This is definately not atomic.  A subsequent run could swoop in and
+#        start writing to the logfile right now and mess things up...
+#
+mv $log $log.sending
+touch $log
+
+# mail the logfile
+mail -s "awesome logfile: $(basename $prog)" --content-type="text/plain" \
+     --attach $log.sending $MAILTO
+
+# remove the logfile
+rm -f $log.sending
+
+exit 0
