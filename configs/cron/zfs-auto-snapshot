@@ -11,6 +11,10 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 
 # keep 3 hours worth of every-5-mins snapshots
+#
+# FIXME: zfs-auto-snapshot doesn't do locking... so we run the risk of
+#        subsecquent calls trouncing snapshots from previous ones
+#
 */5 * * * * root zfs-auto-snapshot -qg -lfrequent -k36 //
 
 # keep 3 days worth of hourly snapshots
