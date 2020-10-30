@@ -33,16 +33,18 @@ done
 # rotate the logfile
 #
 # FIXME: This is definately not atomic.  A subsequent run could swoop in and
-#        start writing to the logfile right now and mess things up...
+#        start writing to the logfile right now and mess things up...  We'd
+#        better just make sure the program starts BEFORE we try to
+#        mail-and-purge it's logfile (i.e., don't schedule both to happen on
+#        the hour)
 #
-mv $log $log.sending
-touch $log
+cp $log $log.sending
+echo >$log
 
 # mail the logfile
-mail -s "awesome logfile: $(basename $prog)" --content-type="text/plain" \
-     --attach $log.sending $MAILTO
+mail -s "awesome logfile from $(hostname): $(basename $prog)" $MAILTO < $log.sending
 
 # remove the logfile
-rm -f $log.sending
+rm $log.sending
 
 exit 0

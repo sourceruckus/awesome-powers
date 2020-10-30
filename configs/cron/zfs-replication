@@ -3,22 +3,30 @@
 MAILTO=michael.d.labriola@gmail.com
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-# FIXME: Should we try and sneak hourlies in here?  I'll have to test things
-#        out... see how badly this impacts performace at CAH.  We've got checks
-#        in the script to make sure we don'trun if we're already running... so
-#        slow syncs won't hurt anything other than general server load.
-
+AP=/scrap/awesome-powers
 
 # pull from cah servers nightly
 #
 # NOTE: amanda backups run at 1AM, gandalf reconnects drbd at 10PM.
 #
-0 0 * * * root /scrap/awesome-powers/sync/zfs-replication
+# FIXME: Should we try and sneak hourlies in here?  I'll have to test things
+#        out... see how badly this impacts performace at CAH.  We've got checks
+#        in the script to make sure we don'trun if we're already running... so
+#        slow syncs won't hurt anything other than general server load.
+#
+#        i could even do every 5 mins...  a test run shows that taking less
+#        than 30 seconds and only transferring a couple MB.  over 1gig local
+#        link, though.
+#
+#*/5 * * * * root $AP/sync/zfs-replication
+0 * * * * root $AP/sync/zfs-replication
 
 # rotate log files
 #
-# NOTE: This will block if replication still running until it finishes, then
-#       mail the logfile and remove it.
+# NOTE: This will block if replication is still running until it finishes, then
+#       mail the logfile and remove it.  However, if this starts to rotate
+#       logfiles and then zfs-replication starts up, that script doesn't wait
+#       so logfiles get wonked.  Make sure to schedule this job slightly after
+#       the zfs-replication job and all will be well.
 #
-export MAILTO
-0 4 * * * root /scrap/awesome-powers/logs/mail-and-purge-logfile sync/zfs-replication
+1 * * * * root MAILTO=$MAILTO $AP/logs/mail-and-purge-logfile $AP/sync/zfs-replication
