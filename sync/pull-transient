@@ -1,0 +1,62 @@
+#!/bin/bash
+#
+# pull files from a remote host that might be there (failures are silent)
+#
+# symlink me so i have a specific $0 per use case
+#
+
+. $0.conf
+
+log=$0.log
+lock=$0.lock
+stamp=$(date +"%Y-%m-%dT%H-%M-%S")
+
+# FIXME: we can do better than this...
+if [ "$1" = "--dry-run" ] || [ "$1" = "-n" ]; then
+    dryrun="-n"
+else
+    dryrun=
+    # when not dryrun, we redirect all output to the logfile
+    exec 1>>$log
+    exec 2>&1
+fi
+
+# check for required vars before locking
+if [ -z "$user" ]; then
+    echo '$user is required'
+    exit 1
+fi
+if [ -z "$host" ]; then
+    echo '$host is required'
+    exit 1
+fi
+if [ -z "$sourcedir" ]; then
+    echo '$sourcedir is required'
+    exit 1
+fi
+if [ -z "destdir" ]; then
+    echo '$destdir is required'
+    exit 1
+fi
+
+# make sure we're not already running
+[ -e $lock ] && exit 0
+
+# make sure host is there
+ping -qc1 $host >/dev/null 2>&1 || exit 0
+
+echo "--- START: $stamp ----------------------------------------------------"
+[ -z "$rsync_opts" ] && rsync_opts="-va -HAX"
+
+go="rsync $rsync_opts $dryrun $user@$host:$sourcedir $destdir"
+echo $go
+eval $go
+
+# FIXME: could stick $postsync_script in config and call it here to do
+#        finishing touches for wacky needs.  if we do that, i guess we should
+#        add $presync_script too just to be symmetrical.  i think photo-grabber
+#        would need this if i were to reimp that using this script as a base.
+
+echo "--- END: $stamp (at $(date +"%Y-%m-%dT%H-%M-%S")) -----------------------------"
+rm -f $lock
+exit 0

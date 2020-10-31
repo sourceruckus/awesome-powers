@@ -1,0 +1,16 @@
+# -*- mode: sh -*-
+
+MAILTO=michael.d.labriola@gmail.com
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+AP=/scrap/awesome-powers
+
+# keep a copy of the dental xray laptop locally for backups.
+#
+# FIXME: perhaps 5mins is to frequent... but we've got to catch this thing when
+#        it's turned on... which is infrequent.
+#
+*/5 * * * * cah $AP/sync/backup-dental-laptop
+
+# rotate logs
+0 0 * * * * cah MAILTO=$MAILTO $AP/logs/mail-and-purge-logfile $AP/sync/backup-dental-laptop
