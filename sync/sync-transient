@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# pull files from a remote host that might be there (failures are silent)
+# sync files with a remote host that might be there (failures are silent)
 #
 # symlink me so i have a specific $0 per use case
 #
@@ -22,33 +22,39 @@ else
 fi
 
 # check for required vars before locking
-if [ -z "$user" ]; then
-    echo '$user is required'
+if [ -n "$src_host" ]; then
+    rmt_host=$src_host
+elif [ -n "$dst_host" ]; then
+    rmt_host=dst_host
+else
+    echo 'either $src_host or $dst_host is required'
     exit 1
 fi
-if [ -z "$host" ]; then
-    echo '$host is required'
+if [ -z "$src_path" ]; then
+    echo '$src_path is required'
     exit 1
 fi
-if [ -z "$sourcedir" ]; then
-    echo '$sourcedir is required'
-    exit 1
-fi
-if [ -z "destdir" ]; then
-    echo '$destdir is required'
+if [ -z "$dst_path" ]; then
+    echo '$dst_path is required'
     exit 1
 fi
 
 # make sure we're not already running
 [ -e $lock ] && exit 0
 
-# make sure host is there
-ping -qc1 $host >/dev/null 2>&1 || exit 0
+# make sure rmt_host is there
+ping -qc1 $rmt_host >/dev/null 2>&1 || exit 0
 
 echo "--- START: $stamp ----------------------------------------------------"
 [ -z "$rsync_opts" ] && rsync_opts="-va -HAX"
 
-go="rsync $rsync_opts $dryrun $user@$host:$sourcedir $destdir"
+go="rsync $rsync_opts $dryrun "
+[ -n "$src_user" ] && go+="$src_user@"
+[ -n "$src_host" ] && gp+="$src_host:"
+go+="$sourcedir "
+[ -n "$dst_user" ] && go+="$dst_user@"
+[ -n "$dst_host" ] && gp+="$dst_host:"
+go+="$destdir"
 echo $go
 eval $go
 
