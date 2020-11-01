@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# sync files with a remote host that might be there (failures are silent)
+# sync files with a remote host awesomely
 #
 # symlink me so i have a specific $0 per use case
 #
@@ -43,7 +43,15 @@ fi
 [ -e $lock ] && exit 0
 
 # make sure rmt_host is there
-ping -qc1 $rmt_host >/dev/null 2>&1 || exit 0
+if ! (ping -qc1 $rmt_host >/dev/null 2>&1); then
+    # if the remote host is transient (e.g., laptop, phone), exit politely.
+    # otherwise exit with failure status
+    if [ -n "$rmt_transient"]; then
+        exit 0
+    else
+        exit 1
+    fi
+fi
 
 echo "--- START: $stamp ----------------------------------------------------"
 [ -z "$rsync_opts" ] && rsync_opts="-va -HAX"
