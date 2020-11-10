@@ -29,4 +29,4 @@ AP=/scrap/awesome-powers
 #       so logfiles get wonked.  Make sure to schedule this job slightly after
 #       the zfs-replication job and all will be well.
 #
-1 * * * * root MAILTO=$MAILTO $AP/logs/mail-and-purge-logfile $AP/sync/zfs-replication
+1 0 * * * root MAILTO=$MAILTO $AP/logs/mail-and-purge-logfile $AP/sync/zfs-replication
