@@ -1,0 +1,17 @@
+# -*- mode: sh -*-
+
+MAILTO=michael.d.labriola@gmail.com
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+AP=/scrap/awesome-powers
+
+# hourly checks on drbd health
+#
+# NOTE: This is so we can email a history of the days health checks once at
+#       night.
+#
+0 * * * * root $AP/status/drbd-status
+
+# rotate log files
+#
+1 0 * * * root MAILTO=$MAILTO $AP/logs/mail-and-purge-logfile $AP/status/drbd-status

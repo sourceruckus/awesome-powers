@@ -1,0 +1,44 @@
+#!/bin/bash
+#
+# script for generating periodic zfs status
+#
+# NOTE: All output appended to logfile, which is then mailed and removed each
+#       night (log rotation and mailing is not this script's responsibility).
+#
+
+# parse our config
+. $0.conf
+
+
+log=$0.log
+lock=$0.lock
+stamp=$(date +"%Y-%m-%dT%H-%M-%S")
+
+# FIXME: we can do better than this...
+if [ "$1" = "--dry-run" ] || [ "$1" = "-n" ]; then
+    dryrun="-n"
+else
+    dryrun=
+    # when not dryrun, we redirect all output to the logfile
+    exec 1>>$log
+    exec 2>&1
+fi
+
+# make sure we're not already running
+[ -e $lock ] && exit 0
+
+echo "--- START: $stamp ----------------------------------------------------"
+
+touch $lock
+
+case "$MODE" in
+    space)
+        zfs list -o space
+        ;;
+    *)
+        zpool status
+esac
+
+echo "--- END: $stamp (at $(date +"%Y-%m-%dT%H-%M-%S")) -----------------------------"
+rm -f $lock
+exit 0
