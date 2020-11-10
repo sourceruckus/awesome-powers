@@ -69,7 +69,7 @@ done
 go+=" $remote_user@$server:$remote_ds $local_ds"
 echo $go
 if [ -z "$dryrun" ]; then
-    eval $go || exit 1
+    eval $go || echo "ERROR: bad things happened!"
 fi
 
 echo "--- END: $stamp (at $(date +"%Y-%m-%dT%H-%M-%S")) -----------------------------"
