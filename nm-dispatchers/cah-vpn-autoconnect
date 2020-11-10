@@ -2,16 +2,19 @@
 #
 # Raise/Lower CAH WireGuard VPN when we raise an interface.
 #
-# FIXME: this should really check to see if the interface that called us is
-#        responsible for our route to the internet before starting/stopping the
-#        vpn.  otherwise, raising/lowering secondary interfaces blows up the
-#        vpn.
-#
+
+# if this interface wasn't our gw, don't do anything
+gw=$(route -n | awk '/^0.0.0.0/ {print $NF}')
+[ -n "$gw" -a "$gw" != "$1" ] && exit 0
+
+
 case "$2" in
     up)
+        echo starting cah-vpn
         /scrap/awesome-powers/net/cah-vpn start
         ;;
     down)
+        echo stopping cah-vpn
         /scrap/awesome-powers/net/cah-vpn stop
         ;;
     *)

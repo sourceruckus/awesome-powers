@@ -30,6 +30,11 @@ while [ -f $lock ]; do
     sleep 1
 done
 
+# just do nothing if log missing or empty
+if [ ! -s $log ]; then
+    exit 0
+fi
+
 # rotate the logfile
 #
 # FIXME: This is definately not atomic.  A subsequent run could swoop in and
@@ -37,6 +42,9 @@ done
 #        better just make sure the program starts BEFORE we try to
 #        mail-and-purge it's logfile (i.e., don't schedule both to happen on
 #        the hour)
+#
+# NOTE: We copy and then truncate the logfile so that if anyone is tailing it,
+#       they get a "file truncated" indication.
 #
 cp $log $log.sending
 echo >$log

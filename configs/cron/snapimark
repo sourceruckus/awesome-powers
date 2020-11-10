@@ -1,0 +1,25 @@
+# -*- mode: sh -*-
+
+MAILTO=michael.d.labriola@gmail.com
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+AP=/scrap/awesome-powers
+
+# sync //srv-files/avimark w/ C:AVImark on inventory3 to keep avimark
+# leaches happy.
+#
+# Run at half past every hour.  We run dflink on inventory3 every hour from 8AM
+# to 8PM (I assume close to on the hour).
+#
+30 * * * * cah $AP/sync/snapimark
+
+# rotate logs
+#
+# FIXME: hmm... permissions problems.  if cah runs snapimark, the logfile will
+#        be owned by cah (if it's even allowed to write it).
+#
+#        should i run snapimark as root, have it setup the logging and
+#        pidcheck, then switch to cah?  it won't be able to remove the pid at
+#        the end...
+#
+0 0 * * * cah MAILTO=$MAILTO $AP/logs/mail-and-purge-logfile $AP/sync/snapimark
