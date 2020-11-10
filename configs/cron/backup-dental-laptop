@@ -13,4 +13,4 @@ AP=/scrap/awesome-powers
 */5 * * * * cah $AP/sync/backup-dental-laptop
 
 # rotate logs
-0 0 * * * * cah MAILTO=$MAILTO $AP/logs/mail-and-purge-logfile $AP/sync/backup-dental-laptop
+1 0 * * * * cah MAILTO=$MAILTO $AP/logs/mail-and-purge-logfile $AP/sync/backup-dental-laptop

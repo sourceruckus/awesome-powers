@@ -22,4 +22,4 @@ AP=/scrap/awesome-powers
 #        pidcheck, then switch to cah?  it won't be able to remove the pid at
 #        the end...
 #
-0 0 * * * cah MAILTO=$MAILTO $AP/logs/mail-and-purge-logfile $AP/sync/snapimark
+1 0 * * * cah MAILTO=$MAILTO $AP/logs/mail-and-purge-logfile $AP/sync/snapimark
