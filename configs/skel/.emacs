@@ -7,7 +7,7 @@
 ;; set cursor color
 (set-cursor-color "orange")
 
-(set-frame-font "Monospace 12")
+(set-frame-font "Monospace 14")
 
 ;; display column numbers
 (column-number-mode t)
@@ -17,6 +17,18 @@
 
 ;; don't bother us with the startup screen, ever
 (setq inhibit-startup-screen t)
+
+;; email settings (needs gnutls-cli executable)
+(setq
+ send-mail-function 'smtpmail-send-it
+ message-send-mail-function 'smtpmail-send-it
+ user-full-name "Michael D Labriola"
+ user-mail-address "michael.d.labriola@gmail.com"
+ smtpmail-starttls-credentials '(("smtp.gmail.com" "587" nil nil))
+ smtpmail-default-smtp-server "smtp.gmail.com"
+ smtpmail-smtp-server "smtp.gmail.com"
+ smtpmail-smtp-service 587
+ )
 
 ;; c-mode-common hook
 (defun my-c-mode-common-hook ()
@@ -79,7 +91,8 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(diff-switches "-u")
- '(inhibit-startup-screen t))
+ '(inhibit-startup-screen t)
+ '(send-mail-function (quote smtpmail-send-it)))
 
 ;;; uncomment for CJK utf-8 support for non-Asian users
 ;; (require 'un-define)
