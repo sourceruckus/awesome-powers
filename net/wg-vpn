@@ -56,6 +56,12 @@ try_interface()
     fi
 
     # add dns
+    #
+    # NOTE: We try this and don't check for errors.  If this needed to succeed,
+    #       and didn't, we'll find out when we check dns below.  It's perfectly
+    #       normal to not have systemd-resolved running, but the host's
+    #       resolver will have to be configured manually.
+    #
     go="systemd-resolve -i $1 --set-dns=$DNS_IP"
     for x in $DNS_SEARCH; do
         go+=" --set-domain=$x"
@@ -77,15 +83,15 @@ try_interface()
 
 start()
 {
-    for x in $INTERFACES; do
-        try_interface $x
+    for interface in $INTERFACES; do
+        try_interface $interface
         if [ $? -eq 0 ]; then
-            echo "Successfully configured $x"
+            echo "Successfully configured $interface"
             return 0
         fi
         # otherwise, we've failed the check, so teardown and keep going
-        echo "$x not usable"
-        wg-quick down $x
+        echo "$interface not usable"
+        wg-quick down $interface
     done
 
     # if we get here, we've tried all the interfaces and they all failed.
