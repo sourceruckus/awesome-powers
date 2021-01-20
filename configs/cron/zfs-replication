@@ -21,7 +21,7 @@ AP=/scrap/awesome-powers
 #*/5 * * * * root $AP/sync/zfs-replication
 0 * * * * root $AP/sync/zfs-replication
 
-# rotate log files
+# end of day analysis and log rotation
 #
 # NOTE: This will block if replication is still running until it finishes, then
 #       mail the logfile and remove it.  However, if this starts to rotate
@@ -29,4 +29,5 @@ AP=/scrap/awesome-powers
 #       so logfiles get wonked.  Make sure to schedule this job slightly after
 #       the zfs-replication job and all will be well.
 #
-1 0 * * * root MAILTO=$MAILTO $AP/logs/mail-and-purge-logfile $AP/sync/zfs-replication
+1 0 * * * root MODE=analysis $AP/sync/zfs-replication
+5 0 * * * root MAILTO=$MAILTO $AP/logs/mail-and-purge-logfile $AP/sync/zfs-replication

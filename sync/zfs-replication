@@ -31,46 +31,104 @@ fi
 # make sure we're not already running
 [ -e $lock ] && exit 0
 
+# parse common status
+. ../status/status-common
+
+
+pick_remote()
+{
+    # pick remote source from $servers
+    server=
+    best_score=
+    for x in $servers; do
+        # FIXME: not really sure how to pick one...  follow srv-router2?  check for
+        #        no guests?  for now, only merry is using zfs, so we just pick him.
+        #
+        #        how about, reachable host w/ fewest domUs.  Or first reachable
+        #        w/ zero domUs.
+        #
+        #        ssh $x xl list | wc -l
+        #
+        #if [ "$x" = "merry" ]; then
+        #    server=$x
+        #    break
+        #fi
+        reachable=$(ssh $x hostname)
+        if [ -z "$reachable" ]; then
+            echo $x not reachable
+            continue
+        fi
+        has_ds=$(ssh $x zfs list -Hp $remote_ds 2>/dev/null)
+        if [ -z "$has_ds" ]; then
+            echo $x missing ds $remote_ds
+            continue
+        fi
+        score=$(ssh $x xl list | wc -l)
+        if [ -z "$score" ]; then
+            echo failed to get score for $x
+            continue
+        elif [ $score -eq 2 ]; then
+            echo perfect score for $x
+            server=$x
+            return
+        elif [ $score -lt $best_score ]; then
+            server=$server
+            best_score=$score
+        fi
+    done
+}
+
+
+do_syncoid()
+{
+    if [ "$recursive" = "true" -o "$recursive" = "1" -o "$recursive" = "yes" ]; then
+        recursive="-r"
+    else
+        recursive=
+    fi
+
+    go="syncoid $recursive"
+    for x in $exclude; do
+        go+=" --exclude=$x"
+    done
+    #echo "$(dirname $local_ds) needs to exist, but not $local_ds"
+    go+=" $remote_user@$server:$remote_ds $local_ds"
+    echo $go
+    if [ -z "$dryrun" ]; then
+        eval $go || echo "ERROR: bad things happened!"
+    fi
+}
+
+
+
 echo "--- START: $stamp ----------------------------------------------------"
 
-# pick remote source from $servers
-server=
-for x in $servers; do
-    # FIXME: not really sure how to pick one...  follow srv-router2?  check for
-    #        no guests?  for now, only merry is using zfs, so we just pick him.
-    if [ "$x" = "merry" ]; then
-        server=$x
-        break
-    fi
-done
-if [ -z "$server" ]; then
-    echo "ERROR: no server found"
-    exit 1
-fi
-echo "selected server $server for replication"
-
-# we lock after the remote server check so that we get output warning us that
-# our servers are down (because they shouldn't be), but we don't lock until
-# we're really doing work.
 touch $lock
 
-
-if [ "$recursive" = "true" -o "$recursive" = "1" -o "$recursive" = "yes" ]; then
-    recursive="-r"
-else
-    recursive=
-fi
-
-go="syncoid $recursive"
-for x in $exclude; do
-    go+=" --exclude=$x"
-done
-#echo "$(dirname $local_ds) needs to exist, but not $local_ds"
-go+=" $remote_user@$server:$remote_ds $local_ds"
-echo $go
-if [ -z "$dryrun" ]; then
-    eval $go || echo "ERROR: bad things happened!"
-fi
+# check for special modes
+case "$MODE" in
+    analyze)
+        echo "Doing end of day analysis"
+        failures=0
+        check ERROR
+        check WARN
+        if [ $failures -ne 0 ]; then
+            echo "!!!!"
+            echo "!!!! Checks Failed: $failures"
+            echo "!!!!"
+        else
+            echo "All checks passed.  :-)"
+        fi
+        ;;
+    *)
+        pick_remote
+        if [ -z "$server" ]; then
+            echo "ERROR: no server found"
+            exit 1
+        fi
+        echo "selected server $server for replication"
+        do_syncoid
+esac
 
 echo "--- END: $stamp (at $(date +"%Y-%m-%dT%H-%M-%S")) -----------------------------"
 rm -f $lock

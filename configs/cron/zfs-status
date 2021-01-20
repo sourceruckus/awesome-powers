@@ -11,9 +11,9 @@ AP=/scrap/awesome-powers
 #       night.
 #
 0 * * * * root $AP/status/zfs-status
+
+# end of day analysis and log rotation
+#
 1 0 * * * root MODE=space $AP/status/zfs-status
 2 0 * * * root MODE=analyze $AP/status/zfs-status
-
-# rotate log files
-#
-2 0 * * * root MAILTO=$MAILTO $AP/logs/mail-and-purge-logfile $AP/status/zfs-status
+5 0 * * * root MAILTO=$MAILTO $AP/logs/mail-and-purge-logfile $AP/status/zfs-status
