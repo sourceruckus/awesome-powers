@@ -32,14 +32,14 @@ fi
 [ -e $lock ] && exit 0
 
 # parse common status
-. ../status/status-common
+. $(dirname $0)/../status/status-common
 
 
 pick_remote()
 {
     # pick remote source from $servers
     server=
-    best_score=
+    best_score=99
     for x in $servers; do
         # FIXME: not really sure how to pick one...  follow srv-router2?  check for
         #        no guests?  for now, only merry is using zfs, so we just pick him.
@@ -72,7 +72,7 @@ pick_remote()
             server=$x
             return
         elif [ $score -lt $best_score ]; then
-            server=$server
+            server=$x
             best_score=$score
         fi
     done
