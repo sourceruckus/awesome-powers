@@ -27,10 +27,78 @@ fi
 # make sure we're not already running
 [ -e $lock ] && exit 0
 
+
+
+check()
+{
+    echo -n "Checking for '$1': "
+    grep -q $1 $log
+    if [ $? -eq 0 ]; then
+        failures=$((failures+1))
+        echo FAIL
+    else
+        echo PASS
+    fi
+}
+
+
 echo "--- START: $stamp ----------------------------------------------------"
 
 touch $lock
-drbdadm status
+
+case "$MODE" in
+    analyze)
+        # check for problems and append extra output
+        echo "Doing end of day analysis"
+        failures=0
+        # disk states other than UpToDate
+        check Diskless
+        check Attaching
+        check Detaching
+        check Failed
+        check Negotiating
+        check Inconsistent
+        check Outdated
+        check DUnknown
+        check Consistent
+        # Roles other than Primary/Secondary
+        check Unknown
+        # Bad connection states
+        check StandAlone
+        check Disconnecting
+        check Unconnected
+        check Timeout
+        check BrokenPipe
+        check NetworkFailure
+        check ProtocolError
+        check TearDown
+        check Connecting
+        # Sync states
+        check StartingSyncS
+        check StartingSyncT
+        check WFBitMapS
+        check WFBitMapT
+        check WFSyncUUID
+        check SyncSource
+        check SyncTarget
+        check PausedSyncS
+        check PausedSyncT
+        check VerifyS
+        check VerifyT
+        check Ahead
+        check Behind
+        if [ $failures -ne 0 ]; then
+            echo "!!!!"
+            echo "!!!!  Checks Failed: $failures"
+            echo "!!!!"
+        else
+            echo "All checks passed.  :-)"
+        fi
+        ;;
+    *)
+        # append status
+        drbdadm status
+esac
 
 echo "--- END: $stamp (at $(date +"%Y-%m-%dT%H-%M-%S")) -----------------------------"
 rm -f $lock

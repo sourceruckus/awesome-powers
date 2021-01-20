@@ -11,6 +11,7 @@ AP=/scrap/awesome-powers
 #       night.
 #
 0 * * * * root $AP/status/drbd-status
+1 0 * * * root MODE=analyze $AP/status/drbd-status
 
 # rotate log files
 #
