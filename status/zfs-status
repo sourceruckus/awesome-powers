@@ -7,7 +7,7 @@
 #
 
 # parse our config
-. $0.conf
+[ -f $0.conf ] && . $0.conf
 
 
 log=$0.log
