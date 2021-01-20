@@ -134,7 +134,8 @@ case "$MODE" in
     *)
         pick_remote
         if [ -z "$server" ]; then
-            echo "ERROR: no server found"
+            echo "ERROR: no suitable server found"
+            rm -f $lock
             exit 1
         fi
         echo "selected server $server for replication"
