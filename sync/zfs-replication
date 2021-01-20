@@ -87,7 +87,18 @@ do_syncoid()
         recursive=
     fi
 
-    go="syncoid $recursive"
+    # FIXME: use our cloned copy of syncoid w/ new --delete-target-snapshots
+    #        flag until this is merged and released upstream.
+    #
+    go="/scrap/sanoid/syncoid --delete-target-snapshots $recursive"
+
+    # FIXME: for some reason, things started failing all the time unless i
+    #        disable resume here...  i did just recently upgrade one of the
+    #        servers to OpenZFS 2.0, so maybe it got mad then...  and I'm not
+    #        sure how to fix it.
+    #
+    go+=" --no-resume"
+
     for x in $exclude; do
         go+=" --exclude=$x"
     done
