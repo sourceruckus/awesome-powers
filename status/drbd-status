@@ -27,19 +27,8 @@ fi
 # make sure we're not already running
 [ -e $lock ] && exit 0
 
-
-
-check()
-{
-    echo -n "Checking for '$1': "
-    grep -q $1 $log
-    if [ $? -eq 0 ]; then
-        failures=$((failures+1))
-        echo FAIL
-    else
-        echo PASS
-    fi
-}
+# parse common stuff
+. status-common
 
 
 echo "--- START: $stamp ----------------------------------------------------"
@@ -89,7 +78,7 @@ case "$MODE" in
         check Behind
         if [ $failures -ne 0 ]; then
             echo "!!!!"
-            echo "!!!!  Checks Failed: $failures"
+            echo "!!!! Checks Failed: $failures"
             echo "!!!!"
         else
             echo "All checks passed.  :-)"

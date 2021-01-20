@@ -1,0 +1,13 @@
+check()
+{
+    echo -n "Checking for '$*': "
+    grep -q "$*" $log
+    if [ $? -eq 0 ]; then
+        failures=$((failures+1))
+        echo FAIL
+    else
+        echo PASS
+    fi
+}
+
+

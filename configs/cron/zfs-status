@@ -12,6 +12,7 @@ AP=/scrap/awesome-powers
 #
 0 * * * * root $AP/status/zfs-status
 1 0 * * * root MODE=space $AP/status/zfs-status
+2 0 * * * root MODE=analyze $AP/status/zfs-status
 
 # rotate log files
 #

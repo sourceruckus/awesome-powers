@@ -27,13 +27,41 @@ fi
 # make sure we're not already running
 [ -e $lock ] && exit 0
 
+# parse common stuff
+. status-common
+
+
+
 echo "--- START: $stamp ----------------------------------------------------"
 
 touch $lock
 
 case "$MODE" in
     space)
+        zpool list
         zfs list -o space
+        ;;
+    analyze)
+        echo "Doing end of day analysis"
+        failures=0
+        check DEGRADED
+        check action:
+        check too many errors
+        if [ $failures -ne 0 ]; then
+            echo "!!!!"
+            echo "!!!! Checks Failed: $failures"
+            echo "!!!!"
+        else
+            echo "All checks passed.  :-)"
+        fi
+        thresh=50
+        while read name cap; do
+            if [ $cap -ge $thresh ]; then
+                echo "!!!"
+                echo "!!! WARNING: $name capacity greater than $thresh%: $cap"
+                echo "!!!"
+            fi
+        done < <(zpool list -Hp -o name,capacity)
         ;;
     *)
         zpool status
