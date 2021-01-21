@@ -29,7 +29,20 @@ else
 fi
 
 # make sure we're not already running
-[ -e $lock ] && exit 0
+#
+# NOTE: Under normal operation, we want to simply exit if previous run is still
+#       processing.  However, the end-of-day reporting modes should wait until
+#       previous invocation exits.
+#
+# FIXME: add a timeout?
+#
+if [ -n "$MODE" ]; then
+    while [ -f $lock ]; do
+        sleep 1
+    done
+else
+    [ -e $lock ] && exit 0
+fi
 
 # parse common status
 . $(dirname $0)/../status/status-common
