@@ -28,8 +28,7 @@ fi
 [ -e $lock ] && exit 0
 
 # parse common stuff
-. status-common
-
+. $(dirname $0)/status-common
 
 
 echo "--- START: $stamp ----------------------------------------------------"
