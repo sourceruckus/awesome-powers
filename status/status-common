@@ -1,5 +1,10 @@
+# -*- sh -*-
+
 check()
 {
+    # silently return if $log missing or empty
+    [ -s $log ] || return
+
     echo -n "Checking for '$*': "
     grep -q "$*" $log
     if [ $? -eq 0 ]; then
