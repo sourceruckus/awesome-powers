@@ -148,11 +148,10 @@ case "$MODE" in
         pick_remote
         if [ -z "$server" ]; then
             echo "ERROR: no suitable server found"
-            rm -f $lock
-            exit 1
+        else
+            echo "selected server $server for replication"
+            do_syncoid
         fi
-        echo "selected server $server for replication"
-        do_syncoid
 esac
 
 echo "--- END: $stamp (at $(date +"%Y-%m-%dT%H-%M-%S")) -----------------------------"
