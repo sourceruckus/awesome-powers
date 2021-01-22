@@ -134,8 +134,8 @@ case "$MODE" in
     analyze)
         echo "Doing end of day analysis"
         failures=0
-        check ERROR
-        check WARN
+        check_log_for_pattern ERROR
+        check_log_for_pattern WARN
         if [ $failures -ne 0 ]; then
             echo "!!!!"
             echo "!!!! Checks Failed: $failures"

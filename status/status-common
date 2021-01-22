@@ -1,18 +1,20 @@
 # -*- sh -*-
 
-check()
+# grep through $log for a pattern, print PASS/FAIL
+check_log_for_pattern()
 {
     # silently return if $log missing or empty
     [ -s $log ] || return
 
-    echo -n "Checking for '$*': "
+    # do the grep prior to the output message, so we don't find that by
+    # accident.
     grep -q "$*" $log
-    if [ $? -eq 0 ]; then
+    rv=$?
+    echo -n "Checking for '$*': "
+    if [ $rv -eq 0 ]; then
         failures=$((failures+1))
         echo FAIL
     else
         echo PASS
     fi
 }
-
-

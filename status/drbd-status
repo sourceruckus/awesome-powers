@@ -54,41 +54,41 @@ case "$MODE" in
         echo "Doing end of day analysis"
         failures=0
         # disk states other than UpToDate
-        check Diskless
-        check Attaching
-        check Detaching
-        check Failed
-        check Negotiating
-        check Inconsistent
-        check Outdated
-        check DUnknown
-        check Consistent
+        check_log_for_pattern Diskless
+        check_log_for_pattern Attaching
+        check_log_for_pattern Detaching
+        check_log_for_pattern Failed
+        check_log_for_pattern Negotiating
+        check_log_for_pattern Inconsistent
+        check_log_for_pattern Outdated
+        check_log_for_pattern DUnknown
+        check_log_for_pattern Consistent
         # Roles other than Primary/Secondary
-        check Unknown
+        check_log_for_pattern Unknown
         # Bad connection states
-        check StandAlone
-        check Disconnecting
-        check Unconnected
-        check Timeout
-        check BrokenPipe
-        check NetworkFailure
-        check ProtocolError
-        check TearDown
-        check Connecting
+        check_log_for_pattern StandAlone
+        check_log_for_pattern Disconnecting
+        check_log_for_pattern Unconnected
+        check_log_for_pattern Timeout
+        check_log_for_pattern BrokenPipe
+        check_log_for_pattern NetworkFailure
+        check_log_for_pattern ProtocolError
+        check_log_for_pattern TearDown
+        check_log_for_pattern Connecting
         # Sync states
-        check StartingSyncS
-        check StartingSyncT
-        check WFBitMapS
-        check WFBitMapT
-        check WFSyncUUID
-        check SyncSource
-        check SyncTarget
-        check PausedSyncS
-        check PausedSyncT
-        check VerifyS
-        check VerifyT
-        check Ahead
-        check Behind
+        check_log_for_pattern StartingSyncS
+        check_log_for_pattern StartingSyncT
+        check_log_for_pattern WFBitMapS
+        check_log_for_pattern WFBitMapT
+        check_log_for_pattern WFSyncUUID
+        check_log_for_pattern SyncSource
+        check_log_for_pattern SyncTarget
+        check_log_for_pattern PausedSyncS
+        check_log_for_pattern PausedSyncT
+        check_log_for_pattern VerifyS
+        check_log_for_pattern VerifyT
+        check_log_for_pattern Ahead
+        check_log_for_pattern Behind
         if [ $failures -ne 0 ]; then
             echo "!!!!"
             echo "!!!! Checks Failed: $failures"
