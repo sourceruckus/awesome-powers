@@ -1,0 +1,4 @@
+# -*- mode: sh -*-
+
+# attempt to mount anything inside /labriola
+* -fstype=nfs files.labriola.dyndns.org:/labriola/&
