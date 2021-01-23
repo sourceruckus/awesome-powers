@@ -61,7 +61,10 @@ case "$MODE" in
         check_log_for_pattern Negotiating
         check_log_for_pattern Inconsistent
         check_log_for_pattern Outdated
-        check_log_for_pattern DUnknown
+        # checking for Unknown catches this, and then catches it as a false
+        # posive later.
+        #
+        #check_log_for_pattern DUnknown
         check_log_for_pattern Consistent
         # Roles other than Primary/Secondary
         check_log_for_pattern Unknown
