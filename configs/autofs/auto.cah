@@ -1,4 +1,4 @@
 # -*- mode: sh -*-
 
 # attempt to mount anything inside /cah
-* -fstype=cifs,user,username=cah,password=cah,nocase,file_mode=0777,dir_mode=0777 ://srv-files/&
+* -fstype=cifs,user,username=cah,password=cah,nocase,file_mode=0777,dir_mode=0777 ://srv-files.infrastructure.cah/&
