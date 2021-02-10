@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Avimark
+Comment=Avimark Practice Management Software (via Wine)
+Icon=/usr/share/pixmaps/avimark.jpg
+Type=Application
+Categories=Office
+Exec=/usr/bin/wine AVImark.exe
+StartupNotify=true
+Terminal=false
+Path=/cah/avimark
+StartupWMClass=explorer.exe
