@@ -23,7 +23,7 @@ doit()
 
     # add/remove the .1 address to/from all vlan interfaces
     for x in $vlans; do
-        go="$ipaddr 10.1.$x.1/24 dev eth0.$x"
+        go="$ipaddr 10.37.$x.1/24 dev eth0.$x"
         echo $go
         eval $go
     done

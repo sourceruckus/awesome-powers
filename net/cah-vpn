@@ -3,9 +3,9 @@
 # This script wraps around wg-vpn providing settings for the CAH VPN
 #
 
-export DNS_IP=10.1.20.4
-export DNS_SEARCH="infrastructure.cah workstation.cah instrument.cah"
-export DNS_NAME=srv-net.infrastructure.cah
+export DNS_IP=10.37.20.4
+export DNS_SEARCH="cowesettanimalhospital.com"
+export DNS_NAME=srv-net.cowesettanimalhospital.com
 export INTERFACES="wg-cah1 wg-cah2"
 
 exec $(dirname $0)/wg-vpn $*

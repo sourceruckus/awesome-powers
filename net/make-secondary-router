@@ -10,13 +10,13 @@ showit()
 
 start()
 {
-    showit route add -net 10.1.0.0/16 gw 10.1.20.1
+    showit route add -net 10.37.0.0/16 gw 10.37.20.1
 }
 
 
 stop()
 {
-    showit route del -net 10.1.0.0/16 gw 10.1.20.1
+    showit route del -net 10.37.0.0/16 gw 10.37.20.1
 }
 
 
