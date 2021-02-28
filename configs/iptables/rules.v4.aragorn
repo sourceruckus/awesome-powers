@@ -20,7 +20,7 @@ COMMIT
 # NAT rules for port-forwarding to different hosts
 
 # send port 2723 to 22 locally
--A PREROUTING -i xenbr0.2 -p tcp --dport 2723 -j DNAT --to-destination 10.1.20.42:22
+-A PREROUTING -i xenbr0.2 -p tcp --dport 2723 -j DNAT --to-destination 10.37.20.42:22
 
 COMMIT
 # Completed on Fri Jan 24 23:18:05 2020
