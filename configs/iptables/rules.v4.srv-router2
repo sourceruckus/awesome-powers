@@ -27,11 +27,11 @@ COMMIT
 # FIXME: do i really need to specify the output interface in the POSTROUTING
 #        rule?
 #
--A PREROUTING -i eth0.2 -p tcp --dport 2781 -j DNAT --to-destination 10.1.20.5:80
--A POSTROUTING -d 10.1.20.5 -o eth0.20 -p tcp --dport 80 -j SNAT --to-source 10.1.20.3
+-A PREROUTING -i eth0.2 -p tcp --dport 2781 -j DNAT --to-destination 10.37.20.5:80
+-A POSTROUTING -d 10.37.20.5 -o eth0.20 -p tcp --dport 80 -j SNAT --to-source 10.37.20.3
 
 # send port 2723 to 22 locally
--A PREROUTING -i eth0.2 -p tcp --dport 2723 -j DNAT --to-destination 10.1.20.3:22
+-A PREROUTING -i eth0.2 -p tcp --dport 2723 -j DNAT --to-destination 10.37.20.3:22
 
 # masquerade all outbound traffic on our public interface (eth0.2, vlan2)
 -A POSTROUTING -o eth0.2 -j MASQUERADE
@@ -216,7 +216,7 @@ COMMIT
 
 
 # allow traffic heading to srv-www:80 (forwarded from port 2781)
--A FORWARD -p tcp -d 10.1.20.5 --dport 80 -j ACCEPT
+-A FORWARD -p tcp -d 10.37.20.5 --dport 80 -j ACCEPT
 
 COMMIT
 # Completed on Fri Jan 24 23:18:05 2020
