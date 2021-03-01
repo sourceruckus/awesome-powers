@@ -58,11 +58,11 @@ echo "--- START: $stamp ----------------------------------------------------"
 
 go="rsync $rsync_opts $dryrun "
 [ -n "$src_user" ] && go+="$src_user@"
-[ -n "$src_host" ] && gp+="$src_host:"
-go+="$sourcedir "
+[ -n "$src_host" ] && go+="$src_host:"
+go+="$src_path "
 [ -n "$dst_user" ] && go+="$dst_user@"
-[ -n "$dst_host" ] && gp+="$dst_host:"
-go+="$destdir"
+[ -n "$dst_host" ] && go+="$dst_host:"
+go+="$dst_path"
 echo $go
 eval $go
 
