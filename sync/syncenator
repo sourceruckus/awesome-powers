@@ -42,14 +42,15 @@ fi
 # make sure we're not already running
 [ -e $lock ] && exit 0
 
-# make sure rmt_host is there
-if ! (ping -qc1 $rmt_host >/dev/null 2>&1); then
-    # if the remote host is transient (e.g., laptop, phone), exit politely.
-    # otherwise exit with failure status
-    if [ -n "$rmt_transient"]; then
+# if the remote host is transient (e.g., laptop, phone), and isn't around at
+# the moment, exit politely.
+#
+# NOTE: We don't bother to check if rmt_host isn't transient, we'll just let
+#       rsync fail down below.
+#
+if [ -n "$rmt_transient" ]; then
+    if ! (ping -qc1 $rmt_host >/dev/null 2>&1); then
         exit 0
-    else
-        exit 1
     fi
 fi
 
