@@ -7,10 +7,53 @@ AP=/scrap/awesome-powers
 
 # keep a copy of the dental xray laptop locally for backups.
 #
-# FIXME: perhaps 5mins is to frequent... but we've got to catch this thing when
-#        it's turned on... which is infrequent.
+# FIXME: perhaps 5mins is too frequent... but we've got to catch this thing
+#        when it's turned on... which is infrequent.
 #
-*/5 * * * * cah $AP/sync/backup-dental-laptop
+# FIXME: trying to decide how much to backup (entire c drive vs just newimages
+#        and oldimages) and how frequently to do it.  looks like backing the
+#        whole c drive up every 15 minutes will result in most jobs taking
+#        about 3 minutes...  i'm not sure how much that slows down the laptop,
+#        though.
+#
+#        actually, it looks like most jobs take about 45 seconds once things
+#        settle down (stupid laptop was probably doing some type of background
+#        update or something inbetween my first 2 syncs).
+#
+#        we could alternatively try to manually do a full c-drive backup
+#        monthly and have the periodic backups juts snag c:/newimages (and
+#        maybe also c:/oldimages).  they would run faster and definately be
+#        less stressfull on the laptop while dental exams are happening.
+#
+# FIXME: might also want to make the underlying syncenator script take a list
+#        of src/dst pairs so we can have a single job backup multiple paths.
+#
+*/15 * * * * root $AP/sync/backup-dental-laptop
+
+#sent 6,006,189 bytes  received 6,848,733,138 bytes  4,455,469.18 bytes/sec
+#total size is 268,031,040,088  speedup is 39.10
+#rsync error: some files/attrs were not transferred (see previous errors) (code 23) at main.c(1668) [generator=3.1.2]
+#--- END: 2021-03-01T12-21-01 (at 2021-03-01T12-46-39) -----------------------------
+
+#sent 249,394 bytes  received 12,100,042 bytes  64,826.44 bytes/sec
+#total size is 268,031,217,171  speedup is 21,703.92
+#rsync error: some files/attrs were not transferred (see previous errors) (code 23) at main.c(1668) [generator=3.1.2]
+#--- END: 2021-03-01T12-49-01 (at 2021-03-01T12-52-12) -----------------------------
+
+#sent 263,552 bytes  received 12,099,693 bytes  260,278.84 bytes/sec
+#total size is 268,031,548,286  speedup is 21,679.71
+#rsync error: some files/attrs were not transferred (see previous errors) (code 23) at main.c(1668) [generator=3.1.2]
+#--- END: 2021-03-01T13-15-01 (at 2021-03-01T13-15-48) -----------------------------
+
+#sent 231,298 bytes  received 12,061,315 bytes  264,357.27 bytes/sec
+#total size is 268,031,718,865  speedup is 21,804.29
+#rsync error: some files/attrs were not transferred (see previous errors) (code 23) at main.c(1668) [generator=3.1.2]
+#--- END: 2021-03-01T13-30-01 (at 2021-03-01T13-30-47) -----------------------------
+
+#sent 261,924 bytes  received 12,052,593 bytes  270,648.73 bytes/sec
+#total size is 268,031,811,832  speedup is 21,765.52
+#rsync error: some files/attrs were not transferred (see previous errors) (code 23) at main.c(1668) [generator=3.1.2]
+#--- END: 2021-03-01T13-45-01 (at 2021-03-01T13-45-47) -----------------------------
 
 # rotate logs
-1 0 * * * * cah MAILTO=$MAILTO $AP/logs/mail-and-purge-logfile $AP/sync/backup-dental-laptop
+1 0 * * * root MAILTO=$MAILTO $AP/logs/mail-and-purge-logfile $AP/sync/backup-dental-laptop
