@@ -48,6 +48,20 @@ fi
 . $(dirname $0)/../status/status-common
 
 
+# FIXME: actually, this whole concept might be a bad idea...  if i've got
+#        multiple remote servers, all doing their OWN auto-snapshots, and i've
+#        been syncing from server1, if i switch to server2, its snapshot aren't
+#        "the same" snapshots as what's been syncing from server1...  so what
+#        happens?
+#
+#        until proven otherwise, i'm going to assume this would be a big
+#        problem.  so we should just specify a single sync source.
+#
+#        if i ever do get around to testing this scenario out, i'll want to do
+#        it with a local machine...  testing with gandalf and merry over the
+#        internet would be a bad idea.  plus, that's my fielded backup system
+#        that i don't want to mess up.
+#
 pick_remote()
 {
     # pick remote source from $servers
