@@ -15,8 +15,9 @@
 # that smartly.
 
 
+
 ###############################################################################
-# RAID optimizations (speed limits, stripe size, readahead, NCQ)
+# Linux MDRAID optimizations (speed limits, stripe size, readahead, NCQ)
 ###############################################################################
 #
 # https://www.cyberciti.biz/tips/linux-raid-increase-resync-rebuild-speed.html
@@ -37,6 +38,7 @@
 echo 50000 > /proc/sys/dev/raid/speed_limit_min
 # ~2 GB/s (suggested for 4-5 disk array)
 echo 2000000 > /proc/sys/dev/raid/speed_limit_max
+
 # stripe_cache_size (default 256)
 #
 # throughput test: dd if=/dev/zero of=/scrap2/FOO bs=1G count=4 oflag=direct (look at speed)
@@ -54,7 +56,8 @@ echo 2000000 > /proc/sys/dev/raid/speed_limit_max
 # FIXME: would be better if we autodetected the raid device (or did all of
 #        them?)
 #
-echo 4096 > /sys/block/md127/md/stripe_cache_size
+#echo 4096 > /sys/block/md127/md/stripe_cache_size
+
 # disable NCQ (default depth 32)
 #
 # FIXME: should i just blanket all SATA devices w/ this?  NCQ apparently fights
@@ -115,32 +118,13 @@ echo 4096 > /sys/block/md127/md/stripe_cache_size
 
 
 ###############################################################################
-# Xen opimizations (4 pinned CPUs, sched-credit 512 or 1024)
+# Xen opimizations (pinned CPUs for dom0 only, sched-credit 512 or 1024)
 ###############################################################################
 #
-# NOTE: The other part of this is pinning dom0 to the 1st 4 cores, then keeping
+# NOTE: The other part of this is pinning dom0 to the 1st N cores, then keeping
 #       all domUs off them, ensuring dom0 always has CPU time to handle domU
 #       IO.
 #
 if [ -f /proc/xen/capabilities ] ; then
     xl sched-credit -d 0 -w 512 || xl sched-credit2 -d 0 -w 512
 fi
-
-
-
-###############################################################################
-# prep 3way drbd lower resources
-###############################################################################
-#
-# use the (not written yet) 3wayres utility to prep all the 3way drbd resources
-# and have this script's service file say "Before=xendomains.service".
-#
-# FIXME: maybe i should put this one in a different script w/ a different
-#        service, so that i can sync /root/bin from frodo/sam to strider w/out
-#        messing things up.
-#
-#        actually... that's true for the raid and hdd tweaking above, too...
-#
-# FIXME: should i search through /etc/drbd.d or /vm/*.cfg for resources
-#        here...?  I'm thinking /etc/drbd.d, searching for any stacked
-#        resource.
