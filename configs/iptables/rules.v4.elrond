@@ -78,6 +78,8 @@ COMMIT
 -A INPUT -i eth0.90 -j ACCEPT
 -A INPUT -i eth0.100 -j ACCEPT
 #-A INPUT -i wg-labriola -j ACCEPT
+-A INPUT -i wg-cah1 -j ACCEPT
+-A INPUT -i wg-cah2 -j ACCEPT
 
 
 # WireGuard policy
@@ -155,6 +157,8 @@ COMMIT
 -A FORWARD -i eth0.2 -o eth0.90 -m state --state RELATED,ESTABLISHED -j ACCEPT
 -A FORWARD -i eth0.2 -o eth0.100 -m state --state RELATED,ESTABLISHED -j ACCEPT
 #-A FORWARD -i eth0.2 -o wg-labriola -m state --state RELATED,ESTABLISHED -j ACCEPT
+-A FORWARD -i eth0.2 -o wg-cah1 -m state --state RELATED,ESTABLISHED -j ACCEPT
+-A FORWARD -i eth0.2 -o wg-cah2 -m state --state RELATED,ESTABLISHED -j ACCEPT
 
 
 # Internal network forwarding policies
@@ -184,8 +188,10 @@ COMMIT
 -A FORWARD -i eth0.100 -j ACCEPT
 #-A FORWARD -i eth0.100 -o eth0.2 -j ACCEPT
 #
-# allow wireguard interface to forward everywhere
+# allow wireguard interfaces to forward everywhere
 #-A FORWARD -i wg-labriola -j ACCEPT
+-A FORWARD -i wg-cah1 -j ACCEPT
+-A FORWARD -i wg-cah2 -j ACCEPT
 
 
 # allow traffic heading to glorfindel
