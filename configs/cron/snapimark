@@ -23,3 +23,6 @@ AP=/scrap/awesome-powers
 #        the end...
 #
 1 0 * * * cah MAILTO=$MAILTO $AP/logs/mail-and-purge-logfile $AP/sync/snapimark
+
+# remove stale lock files during boot
+@reboot root rm -f $AP/sync/snapimark.lock

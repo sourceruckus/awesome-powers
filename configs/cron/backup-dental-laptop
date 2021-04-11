@@ -57,3 +57,6 @@ AP=/scrap/awesome-powers
 
 # rotate logs
 1 0 * * * root MAILTO=$MAILTO $AP/logs/mail-and-purge-logfile $AP/sync/backup-dental-laptop
+
+# remove stale lock files during boot
+@reboot root rm -f $AP/sync/backup-dental-laptop.lock
