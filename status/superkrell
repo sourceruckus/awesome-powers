@@ -1,10 +1,10 @@
 #!/bin/bash
 
-nodes_default="frodo sam merry gandalf srv-files"
+nodes_default="frodo sam merry gandalf srv-files aragorn"
 nodes_dom0="frodo sam merry gandalf"
 nodes_srv="srv-files srv-net srv-auth srv-www srv-router1 srv-router2"
 nodes_dev="aragorn legolas gimli boromir"
-nodes_home="elrond galadriel glorfindel"
+nodes_home="gandalf elrond galadriel glorfindel"
 
 
 usage()
