@@ -1,5 +1,11 @@
 #!/bin/bash
 #
+# Awesome Powers - scripts & config files of pure awesomeness
+#
+# Copyright 2018-2021 Michael D Labriola <michael.d.labriola@gmail.com>
+#
+# Licensed under the GPLv3. See the file COPYING for details. 
+#
 # Mail logfile to $MAILTO, then remove logfile.  The logfile is assumed to be
 # the name of the specified script w/ .log at the end.
 #

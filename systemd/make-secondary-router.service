@@ -1,5 +1,11 @@
 # -*- conf -*-
 #
+# Awesome Powers - scripts & config files of pure awesomeness
+#
+# Copyright 2018-2021 Michael D Labriola <michael.d.labriola@gmail.com>
+#
+# Licensed under the GPLv3. See the file COPYING for details. 
+#
 # This script doesn't do anything to the existing secondary router, if any.  It
 # just tries to set this box up as the secondary router.  When stopped, it
 # disables the secondary stuff.  It does NOT transition entirely to primary,

@@ -1,5 +1,13 @@
 #!/bin/bash
 #
+# Awesome Powers - scripts & config files of pure awesomeness
+#
+# Copyright 2018-2021 Michael D Labriola <michael.d.labriola@gmail.com>
+#
+# Licensed under the GPLv3. See the file COPYING for details. 
+#
+# Script for starting/stopping the AVImarkServer via wine with state tracking.
+#
 # NOTE: This is slightly odd... we're really going to track the pid of
 #       wineserver, because when that gets killed, all wine services exit as
 #       well.

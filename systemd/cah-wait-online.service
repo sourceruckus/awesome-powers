@@ -1,5 +1,11 @@
 # -*- conf -*-
 #
+# Awesome Powers - scripts & config files of pure awesomeness
+#
+# Copyright 2018-2021 Michael D Labriola <michael.d.labriola@gmail.com>
+#
+# Licensed under the GPLv3. See the file COPYING for details. 
+#
 # This unit file is needed on systems with multiple interfaces, when you want
 # network-only.target to wait for a particular one.  This seem to even be
 # needed when you've got xenbr0 and xenbr0.20... as otherwise network-online

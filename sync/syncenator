@@ -1,8 +1,14 @@
 #!/bin/bash
 #
-# sync files with a remote host awesomely
+# Awesome Powers - scripts & config files of pure awesomeness
 #
-# symlink me so i have a specific $0 per use case
+# Copyright 2018-2021 Michael D Labriola <michael.d.labriola@gmail.com>
+#
+# Licensed under the GPLv3. See the file COPYING for details. 
+#
+# Script to sync files with a remote host awesomely.
+#
+# NOTE: Symlink me so I have a specific $0 per use case.
 #
 
 . $0.conf

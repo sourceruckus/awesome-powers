@@ -1,5 +1,11 @@
 #!/bin/bash
 #
+# Awesome Powers - scripts & config files of pure awesomeness
+#
+# Copyright 2018-2021 Michael D Labriola <michael.d.labriola@gmail.com>
+#
+# Licensed under the GPLv3. See the file COPYING for details. 
+#
 # The idea behind this when I wrote it was setup a symlink tree where each dir
 # was a device we're syncing from (e.g., mikephone, bethphone).  Within each of
 # those would be a symlink to photo-grabber and a local .conf file.

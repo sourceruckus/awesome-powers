@@ -1,9 +1,16 @@
 #!/bin/bash
 #
-# This is a slightly bigger task than just using wg-quick because:
+# Awesome Powers - scripts & config files of pure awesomeness
+#
+# Copyright 2018-2021 Michael D Labriola <michael.d.labriola@gmail.com>
+#
+# Licensed under the GPLv3. See the file COPYING for details. 
+#
+# Script for raising/lowering WireGuard interface.  This is a slightly bigger
+# task than just using wg-quick because:
 #
 # 1. wg-quick uses resolvconf for DNS settings, and our system uses
-#    systemd-resolv, which has different syntax.  So, we can't let qg-quick do
+#    systemd-resolv, which has different syntax.  So, we can't let wg-quick do
 #    the DNS setup.
 #
 # 2. While only one of the routers will have it's WireGuard interface up, there

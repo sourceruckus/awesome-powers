@@ -1,4 +1,13 @@
 # -*- sh -*-
+#
+# Awesome Powers - scripts & config files of pure awesomeness
+#
+# Copyright 2018-2021 Michael D Labriola <michael.d.labriola@gmail.com>
+#
+# Licensed under the GPLv3. See the file COPYING for details. 
+#
+# Common functions for status scripts.
+#
 
 # grep through $log for a pattern, print PASS/FAIL
 check_log_for_pattern()

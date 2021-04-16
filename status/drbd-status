@@ -1,6 +1,12 @@
 #!/bin/bash
 #
-# script for generating periodic drbd status
+# Awesome Powers - scripts & config files of pure awesomeness
+#
+# Copyright 2018-2021 Michael D Labriola <michael.d.labriola@gmail.com>
+#
+# Licensed under the GPLv3. See the file COPYING for details. 
+#
+# Script for generating periodic drbd status.
 #
 # NOTE: All output appended to logfile, which is then mailed and removed each
 #       night (log rotation and mailing is not this script's responsibility).

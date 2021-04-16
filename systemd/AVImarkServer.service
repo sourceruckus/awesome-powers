@@ -1,5 +1,11 @@
 # -*- conf -*-
 #
+# Awesome Powers - scripts & config files of pure awesomeness
+#
+# Copyright 2018-2021 Michael D Labriola <michael.d.labriola@gmail.com>
+#
+# Licensed under the GPLv3. See the file COPYING for details. 
+#
 [Unit]
 Description=AVImarkServer service (via Wine)
 After=network-online.target

@@ -1,4 +1,18 @@
 #!/bin/bash
+#
+# Awesome Powers - scripts & config files of pure awesomeness
+#
+# Copyright 2018-2021 Michael D Labriola <michael.d.labriola@gmail.com>
+#
+# Licensed under the GPLv3. See the file COPYING for details. 
+#
+# This script tweaks the secondary router.  Seems a little odd, but we've got 2
+# scripts/services, make-primary and make-secondary.  Basically, you're either
+# a primary router, a secpondary router, or NOT a rounter (in which case you
+# don't do either).  There are a bunch of hardcoded things in here, so edit
+# before use.
+#
+
 
 showit()
 {

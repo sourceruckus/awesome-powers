@@ -1,4 +1,15 @@
 #!/bin/bash
+#
+# Awesome Powers - scripts & config files of pure awesomeness
+#
+# Copyright 2018-2021 Michael D Labriola <michael.d.labriola@gmail.com>
+#
+# Licensed under the GPLv3. See the file COPYING for details. 
+#
+# Simple script that waits for a specified list of hosts to be reachable on the
+# network before returning (unless the timeout is reached).  Helpful for
+# syncronizing nodes during bootup with systemd rules.
+#
 
 while [ $# -gt 0 ]; do
     timeout=15

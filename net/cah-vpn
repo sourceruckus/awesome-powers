@@ -1,6 +1,12 @@
 #!/bin/bash
 #
-# This script wraps around wg-vpn providing settings for the CAH VPN
+# Awesome Powers - scripts & config files of pure awesomeness
+#
+# Copyright 2018-2021 Michael D Labriola <michael.d.labriola@gmail.com>
+#
+# Licensed under the GPLv3. See the file COPYING for details. 
+#
+# This script wraps around wg-vpn providing settings for the CAH VPN.
 #
 
 export DNS_IP=10.37.20.4

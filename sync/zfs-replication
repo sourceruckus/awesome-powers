@@ -1,6 +1,22 @@
 #!/bin/bash
 #
-# script for doing remote zfs replication
+# Awesome Powers - scripts & config files of pure awesomeness
+#
+# Copyright 2018-2021 Michael D Labriola <michael.d.labriola@gmail.com>
+#
+# Licensed under the GPLv3. See the file COPYING for details. 
+#
+# Script for doing remote zfs replication.
+#
+# NOTE: This script currently makes use special command line options that have
+#       not been merged yet into syncoid (part of the sanoid project).  As
+#       such, it expects you to clone
+#       https://github.com/jimsalterjrs/sanoid.git into /scrap/sanoid, add a
+#       remote for https://github.com/mat813/sanoid.git, and checkout mat813's
+#       mat813/snapshot-removal branch.
+#
+# FIXME: I should probably stand up a copy of this at git.sourceruckus.org,
+#        especially if I start modifying it...
 #
 # NOTE: All output appended to logfile, which is then mailed and removed each
 #       night (log rotation and mailing is not this script's responsibility).

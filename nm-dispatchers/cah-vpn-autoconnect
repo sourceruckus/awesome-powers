@@ -1,6 +1,13 @@
 #!/bin/sh -e
 #
-# Raise/Lower CAH WireGuard VPN when we raise an interface.
+# Awesome Powers - scripts & config files of pure awesomeness
+#
+# Copyright 2018-2021 Michael D Labriola <michael.d.labriola@gmail.com>
+#
+# Licensed under the GPLv3. See the file COPYING for details. 
+#
+# Automatically raise/lower CAH WireGuard VPN when we raise an interface (if
+# that interface provides us with a default gateway).
 #
 
 # if this interface wasn't our gw, don't do anything
