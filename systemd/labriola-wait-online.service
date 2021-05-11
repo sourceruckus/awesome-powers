@@ -15,7 +15,7 @@
 # it.
 #
 [Unit]
-Description=wait for cah network connectivity
+Description=wait for labriola network connectivity
 Requires=NetworkManager.service
 After=NetworkManager.service
 Before=network-online.target
