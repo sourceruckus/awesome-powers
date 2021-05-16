@@ -6,7 +6,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 AP=/scrap/awesome-powers
 
 # periodic gateway checking (and logfile appending)
-*/5 * * * * root $AP/net/check-gateway
+* * * * * root $AP/net/check-gateway
 
 # end of day analysis and log rotation
 #1 0 * * * root MODE=analyze $AP/net/check-gateway
