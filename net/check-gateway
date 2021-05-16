@@ -1,0 +1,58 @@
+#!/bin/bash
+#
+# Awesome Powers - scripts & config files of pure awesomeness
+#
+# Copyright 2018-2021 Michael D Labriola <michael.d.labriola@gmail.com>
+#
+# Licensed under the GPLv3. See the file COPYING for details. 
+#
+# Intended to be called periodically, checks that the system's default gateway
+# is reachable.  If it is NOT reachable, a secondary gateway is used as a
+# backup.  If it IS reachable, secondary gateway is removed.
+#
+
+# FIXME: these should be in a config file
+primary_iface=vlan2
+secondary_iface=vlan3
+
+
+detect_gw()
+{
+    # try static gateway
+    gw=$(nmcli con show $1 |awk '/^IP4.GATEWAY/ {print $NF}')
+    if [ "$gw" = "" -o "$gw" = "--" ]; then
+        # try DHCP otpions
+        gw=$(nmcli con show $1 |awk '/^DHCP4.OPTION[[:print:]]* routers =/ {print $NF}')
+    fi
+    echo $gw
+}
+
+# detect primary gateway
+primary_gw=$(detect_gw $primary_iface)
+# detect secondary gateway
+secondary_gw=$(detect_gw $secondary_iface)
+
+echo primary gw: $primary_gw
+echo secondary gw: $secondary_gw
+
+# check reachability of primary
+ping -w2 -R $primary_gw
+if [ $? -ne 0 ]; then
+    echo "$primary_gw is NOT reachable"
+    # now add secondary gateway
+    #
+    # NOTE: We use 0.0.0.0/1 nad 128.0.0.0/1 instead of 0.0.0.0/0 because it
+    #       covers the same ip-range, but counts as a higher priority route.
+    #       This way we never have to remove the primary gw, just add/remove
+    #       the secondary one.
+    #
+    ip route add 0.0.0.0/1 via $secondary_gw
+    ip route add 128.0.0.0/1 via $secondary_gw
+else
+    echo "$primary_gw IS reachable"
+    # remove secondary gateway
+    ip route del 0.0.0.0/1 via $secondary_gw
+    ip route del 128.0.0.0/1 via $secondary_gw
+fi
+
+exit 0

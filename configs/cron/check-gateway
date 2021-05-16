@@ -1,0 +1,8 @@
+# -*- mode: sh -*-
+
+MAILTO=michael.d.labriola@gmail.com
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+AP=/scrap/awesome-powers
+
+*/5 * * * * root $AP/net/check-gateway
