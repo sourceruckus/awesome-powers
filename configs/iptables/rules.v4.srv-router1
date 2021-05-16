@@ -28,13 +28,16 @@ COMMIT
 #        rule?
 #
 -A PREROUTING -i eth0.2 -p tcp --dport 2781 -j DNAT --to-destination 10.37.20.5:80
+-A PREROUTING -i eth0.3 -p tcp --dport 2781 -j DNAT --to-destination 10.37.20.5:80
 -A POSTROUTING -d 10.37.20.5 -o eth0.20 -p tcp --dport 80 -j SNAT --to-source 10.37.20.2
 
 # send port 2723 to 22 locally
 -A PREROUTING -i eth0.2 -p tcp --dport 2723 -j DNAT --to-destination 10.37.20.2:22
+-A PREROUTING -i eth0.3 -p tcp --dport 2723 -j DNAT --to-destination 10.37.20.2:22
 
 # masquerade all outbound traffic on our public interface (eth0.2, vlan2)
 -A POSTROUTING -o eth0.2 -j MASQUERADE
+-A POSTROUTING -o eth0.3 -j MASQUERADE
 
 COMMIT
 # Completed on Fri Jan 24 23:18:05 2020
@@ -49,6 +52,7 @@ COMMIT
 # mark traffic that comes directly to port 22 so we can drop it later on w/out
 # also dropping the traffic we've forwarded there from 2723
 -A PREROUTING -i eth0.2 -p tcp --dport 22 -j MARK --set-mark 1
+-A PREROUTING -i eth0.3 -p tcp --dport 22 -j MARK --set-mark 1
 
 COMMIT
 # Completed on Fri Jan 24 23:18:05 2020
@@ -100,6 +104,7 @@ COMMIT
 # let any wireguard traffic in on the port we're using
 #
 -A INPUT -i eth0.2 -p udp --dport 51820 -j ACCEPT
+-A INPUT -i eth0.3 -p udp --dport 51820 -j ACCEPT
 # also allow it from public.cah
 -A INPUT -i eth0.10 -p udp --dport 51820 -j ACCEPT
 
@@ -114,6 +119,7 @@ COMMIT
 #        port 80.
 #
 -A INPUT -i eth0.2 -p tcp --dport 2781 -j ACCEPT
+-A INPUT -i eth0.3 -p tcp --dport 2781 -j ACCEPT
 
 
 # SSH policy
@@ -129,9 +135,13 @@ COMMIT
 # open up our non-standard port, because we're going to forward traffic from
 # there to port 22 and we can't if it's blocked (duh).
 -A INPUT -i eth0.2 -p tcp --dport 2723 -j ACCEPT
+-A INPUT -i eth0.3 -p tcp --dport 2723 -j ACCEPT
 
 # Let traffic from the public wifi ap in
--A INPUT -i eth0.10 -m mac --mac-source 74:83:c2:b9:f0:ea -j ACCEPT
+#
+# FIXME: i think this is from prior to adding a vlan10 interface on aragorn
+#
+#-A INPUT -i eth0.10 -m mac --mac-source 74:83:c2:b9:f0:ea -j ACCEPT
 
 # Instead of blacklisting IPs that are spamming my box, let's try and deter
 # brute force attacks by only allowing 3 connections per minute.  This way, the
@@ -147,8 +157,10 @@ COMMIT
 #
 # record connections to ssh port
 -A INPUT -i eth0.2 -p tcp --dport 22 -m state --state NEW -m recent --set --name ssh --rsource
+-A INPUT -i eth0.3 -p tcp --dport 22 -m state --state NEW -m recent --set --name ssh --rsource
 # then rate limit connection attempts to 3 per minute
 -A INPUT -i eth0.2 -p tcp --dport 22 -m state --state NEW -m recent ! --rcheck --seconds 60 --hitcount 4 --name ssh --rsource -j ACCEPT 
+-A INPUT -i eth0.3 -p tcp --dport 22 -m state --state NEW -m recent ! --rcheck --seconds 60 --hitcount 4 --name ssh --rsource -j ACCEPT 
 
 
 # Drop invalid packets
@@ -176,12 +188,16 @@ COMMIT
 #
 # FIXME: should we eventually remove the eth0 interface rules?
 #
--A FORWARD -i eth0.2 -o eth0 -m state --state RELATED,ESTABLISHED -j ACCEPT
--A FORWARD -i eth0.2 -o eth0.10 -m state --state RELATED,ESTABLISHED -j ACCEPT
--A FORWARD -i eth0.2 -o eth0.20 -m state --state RELATED,ESTABLISHED -j ACCEPT
--A FORWARD -i eth0.2 -o eth0.30 -m state --state RELATED,ESTABLISHED -j ACCEPT
--A FORWARD -i eth0.2 -o eth0.40 -m state --state RELATED,ESTABLISHED -j ACCEPT
--A FORWARD -i eth0.2 -o wg-cah -m state --state RELATED,ESTABLISHED -j ACCEPT
+#-A FORWARD -i eth0.2 -o eth0 -m state --state RELATED,ESTABLISHED -j ACCEPT
+#-A FORWARD -i eth0.2 -o eth0.10 -m state --state RELATED,ESTABLISHED -j ACCEPT
+#-A FORWARD -i eth0.2 -o eth0.20 -m state --state RELATED,ESTABLISHED -j ACCEPT
+#-A FORWARD -i eth0.2 -o eth0.30 -m state --state RELATED,ESTABLISHED -j ACCEPT
+#-A FORWARD -i eth0.2 -o eth0.40 -m state --state RELATED,ESTABLISHED -j ACCEPT
+#-A FORWARD -i eth0.2 -o wg-cah -m state --state RELATED,ESTABLISHED -j ACCEPT
+#
+# FIXME: try that w/out specifying output interface
+-A FORWARD -i eth0.2 -m state --state RELATED,ESTABLISHED -j ACCEPT
+-A FORWARD -i eth0.3 -m state --state RELATED,ESTABLISHED -j ACCEPT
 
 
 # Internal network forwarding policies
@@ -194,6 +210,7 @@ COMMIT
 #
 # public.cah can only go to internet and VPN (CONFIRMED)
 -A FORWARD -i eth0.10 -o eth0.2 -j ACCEPT
+-A FORWARD -i eth0.10 -o eth0.3 -j ACCEPT
 -A FORWARD -i eth0.10 -o wg-cah -j ACCEPT
 # traffic from pubblic wifi ap is allowed to forward to infrastructure.cah
 -A FORWARD -i eth0.10 -o eth0.20 -m mac --mac-source 74:83:c2:b9:f0:ea -j ACCEPT
@@ -203,11 +220,13 @@ COMMIT
 #
 # workstation.cah can only go to internet and infrastructure.cah (CONFIRMED)
 -A FORWARD -i eth0.30 -o eth0.2 -j ACCEPT
+-A FORWARD -i eth0.30 -o eth0.3 -j ACCEPT
 -A FORWARD -i eth0.30 -o eth0.20 -j ACCEPT
 -A FORWARD -i eth0.30 -o wg-cah -j ACCEPT
 #
 # instrument.cah can only to to internet and infrastructure.cah (CONFIRMED)
 -A FORWARD -i eth0.40 -o eth0.2 -j ACCEPT
+-A FORWARD -i eth0.40 -o eth0.3 -j ACCEPT
 -A FORWARD -i eth0.40 -o eth0.20 -j ACCEPT
 -A FORWARD -i eth0.40 -o wg-cah -j ACCEPT
 #
