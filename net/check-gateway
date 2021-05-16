@@ -10,10 +10,21 @@
 # is reachable.  If it is NOT reachable, a secondary gateway is used as a
 # backup.  If it IS reachable, secondary gateway is removed.
 #
+# NOTE: All output appended to logfile, which is then mailed and removed each
+#       night (log rotation and mailing is not this script's responsibility).
+#
 
-# FIXME: these should be in a config file
-primary_iface=vlan2
-secondary_iface=vlan3
+# parse our config
+[ -f $0.conf ] && . $0.conf
+
+
+log=$0.log
+lock=$0.lock
+stamp=$(date +"%Y-%m-%dT%H-%M-%S")
+
+# redirect all output to the logfile
+exec 1>>$log
+exec 2>&1
 
 
 detect_gw()
@@ -26,6 +37,11 @@ detect_gw()
     fi
     echo $gw
 }
+
+
+echo "--- START: $stamp ----------------------------------------------------"
+
+touch $lock
 
 # detect primary gateway
 primary_gw=$(detect_gw $primary_iface)
@@ -55,4 +71,6 @@ else
     ip route del 128.0.0.0/1 via $secondary_gw
 fi
 
+echo "--- END: $stamp (at $(date +"%Y-%m-%dT%H-%M-%S")) -----------------------------"
+rm -f $lock
 exit 0
