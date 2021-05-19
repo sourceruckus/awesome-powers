@@ -52,7 +52,7 @@ echo primary gw: $primary_gw
 echo secondary gw: $secondary_gw
 
 # check reachability of primary
-ping -w2 -R $primary_gw
+ping -w2 $primary_gw >/dev/null 2>&1
 if [ $? -ne 0 ]; then
     echo "$primary_gw is NOT reachable"
     # now add secondary gateway
@@ -62,13 +62,16 @@ if [ $? -ne 0 ]; then
     #       This way we never have to remove the primary gw, just add/remove
     #       the secondary one.
     #
-    ip route add 0.0.0.0/1 via $secondary_gw
-    ip route add 128.0.0.0/1 via $secondary_gw
+    # FIXME: I wonder if we should make this a bit smarter, only add/remove
+    #        routes if needed, and send an email alert if we've failed over?
+    #
+    ip route add 0.0.0.0/1 via $secondary_gw >/dev/null 2>&1
+    ip route add 128.0.0.0/1 via $secondary_gw >/dev/null 2>&1
 else
     echo "$primary_gw IS reachable"
     # remove secondary gateway
-    ip route del 0.0.0.0/1 via $secondary_gw
-    ip route del 128.0.0.0/1 via $secondary_gw
+    ip route del 0.0.0.0/1 via $secondary_gw >/dev/null 2>&1
+    ip route del 128.0.0.0/1 via $secondary_gw >/dev/null 2>&1
 fi
 
 echo "--- END: $stamp (at $(date +"%Y-%m-%dT%H-%M-%S")) -----------------------------"
