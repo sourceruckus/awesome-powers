@@ -22,12 +22,6 @@ Before=network-online.target
 
 [Service]
 Type=oneshot
-# FIXME: why did i start to move the ip addressing into a seperate script... i
-#        never finished, and that script doesn't exist, so let's go back to
-#        invoking wait-for-host directly here
-#
-#ExecStart=/scrap/awesome-powers/net/cah-wait-online
-#
 # NOTE: There are a couple slightly different things we're trying to accomplish
 #       here, depending on the box that's booting.
 #

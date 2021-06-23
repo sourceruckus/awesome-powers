@@ -15,24 +15,24 @@
 # it.
 #
 [Unit]
-Description=wait for cah network connectivity
+Description=wait for nautilus network connectivity
 Requires=NetworkManager.service
 After=NetworkManager.service
 Before=network-online.target
 
 [Service]
 Type=oneshot
-# NOTE: There ara couple slightly different things we're trying to accomplish
+# NOTE: There are a couple slightly different things we're trying to accomplish
 #       here, depending on the box that's booting.
 #
-#       workstations: wait for gw interface (e.g., 10.37.20.1) to make sure we
+#       workstations: wait for gw interface (e.g., 10.1.20.1) to make sure we
 #       can reach the whole network.
 #
 #       core servers: wait for OUR vlan20 ip address, so we stop waiting once
 #       our vlan interface is up.  we have to work around the chance that
 #       srv-router isn't up yet, from a complete cold start.
 #
-ExecStart=/scrap/awesome-powers/net/wait-for-host 10.37.20.1
+ExecStart=/scrap/awesome-powers/net/wait-for-host 10.1.20.1
 RemainAfterExit=yes
 
 [Install]

@@ -14,18 +14,13 @@ Description=wait for drbd network connectivity
 Requires=NetworkManager.service
 After=NetworkManager.service
 Before=network-online.target
-#Before=drbd.service
-#
-# FIXME: why/when was drbd.service replaced with network-online.service?  i
-#        don't recall doing that...
-#
 
 [Service]
 Type=oneshot
-# NOTE: Ok, this is gonna be complicated.  On our core servers, we've got 2
-#       different direct fiber connections to the other core server.  As with
-#       cah-wait-online, we need to wait for OUR side of the interface, but we
-#       really need to be able to wait for ALL the interfaces to be up.
+# NOTE: On our core servers, we've got direct 10gig links to eath of our other
+#       core servers.  As with cah-wait-online, we need to wait for OUR side of
+#       the interface(s), but we really need to be able to wait for ALL the
+#       interfaces to be up.
 #
 ExecStart=/scrap/awesome-powers/net/wait-for-host 192.168.10.1 192.168.11.1
 RemainAfterExit=yes
