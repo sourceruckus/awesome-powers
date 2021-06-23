@@ -22,8 +22,8 @@
 (setq
  send-mail-function 'smtpmail-send-it
  message-send-mail-function 'smtpmail-send-it
- user-full-name "Michael D Labriola"
- user-mail-address "michael.d.labriola@gmail.com"
+ user-full-name "My Full Name"
+ user-mail-address "my.full.name@gmail.com"
  smtpmail-starttls-credentials '(("smtp.gmail.com" "587" nil nil))
  smtpmail-default-smtp-server "smtp.gmail.com"
  smtpmail-smtp-server "smtp.gmail.com"
