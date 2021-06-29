@@ -10,7 +10,7 @@
 #
 
 export DNS_IP=10.37.20.4
-export DNS_SEARCH="cowesettanimalhospital.com"
+export DNS_SEARCH="cowesettanimalhospital.com labriola.dyndns.org"
 export DNS_NAME=srv-net.cowesettanimalhospital.com
 export INTERFACES="wg-cah1 wg-cah2"
 
