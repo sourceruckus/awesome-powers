@@ -1,0 +1,17 @@
+#!/bin/bash
+#
+# Awesome Powers - scripts & config files of pure awesomeness
+#
+# Copyright 2018-2021 Michael D Labriola <michael.d.labriola@gmail.com>
+#
+# Licensed under the GPLv3. See the file COPYING for details. 
+#
+# This script wraps around wg-vpn providing settings for the CAH VPN.
+#
+
+export DNS_IP=10.1.20.2
+export DNS_SEARCH="nautilus.oet.org"
+export DNS_NAME=netsrv1.nautilus.oet.org
+export INTERFACES="wg-nautilus-de"
+
+exec $(dirname $0)/wg-vpn $*

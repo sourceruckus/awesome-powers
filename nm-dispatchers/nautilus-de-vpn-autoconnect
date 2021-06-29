@@ -1,0 +1,33 @@
+#!/bin/sh -e
+#
+# Awesome Powers - scripts & config files of pure awesomeness
+#
+# Copyright 2018-2021 Michael D Labriola <michael.d.labriola@gmail.com>
+#
+# Licensed under the GPLv3. See the file COPYING for details. 
+#
+# Automatically raise/lower CAH WireGuard VPN when we raise an interface (if
+# that interface provides us with a default gateway).
+#
+
+# if this interface wasn't our gw, don't do anything
+gw=$(route -n | awk '/^0.0.0.0/ {print $NF}')
+[ -n "$gw" -a "$gw" != "$1" ] && exit 0
+
+
+case "$2" in
+    up)
+        echo starting nautilus-de-vpn
+        /scrap/awesome-powers/net/nautilus-de-vpn start
+        ;;
+    down)
+        echo stopping nautilus-de-vpn
+        /scrap/awesome-powers/net/nautilus-de-vpn stop
+        ;;
+    *)
+        echo "$0: called with unknown action \`$2'" 1>&2
+        exit 0
+        ;;
+esac
+
+exit 0
