@@ -1,0 +1,13 @@
+#!/bin/bash
+#
+# Awesome Powers - scripts & config files of pure awesomeness
+#
+# Copyright 2018-2021 Michael D Labriola <michael.d.labriola@gmail.com>
+#
+# Licensed under the GPLv3. See the file COPYING for details. 
+#
+# This script executes a bunch of tc commands to setup traffic control queues
+# for a simple 3 queue system - voip, regular, and low priority traffic
+#
+# FIXME: should we do tc filters or mark packages w/ iptables?
+#
