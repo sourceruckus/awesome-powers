@@ -23,23 +23,123 @@ lock=$0.lock
 stamp=$(date +"%Y-%m-%dT%H-%M-%S")
 
 # redirect all output to the logfile
-exec 1>>$log
-exec 2>&1
+#exec 1>>$log
+#exec 2>&1
 
 
-detect_gw()
+iface_get_routes()
 {
-    # try static gateway
+    # try manual gateway
     gw=$(nmcli con show $1 |awk '/^IP4.GATEWAY/ {print $NF}')
     if [ "$gw" = "" -o "$gw" = "--" ]; then
         # try DHCP otpions
         gw=$(nmcli con show $1 |awk '/^DHCP4.OPTION[[:print:]]* routers =/ {print $NF}')
     fi
-    echo $gw
+
+    # if we got a gateway, we need to format it as a route by adding 0.0.0.0/0
+    # in front
+    if [ -n "$gw" ]; then
+        gw="0.0.0.0/0 $gw"
+    fi
+    gw=($gw)
+
+    # now check for additional routes, first manually configured ones, then
+    # dhcp
+    #
+    # FIXME: definately room for improvement in the parsing here...  we're
+    #        assuming the field numbers of the IPs we want are $4 and $7.
+    #        we're also assuming that the first pair is 'network' '0.0.0.0/0',
+    #        which we don't want to add.
+    #
+    # FIXME: shoot, the IP4.ROUTE stuff is only for the active
+    #        configuration... in other words, if the interface is fully
+    #        activated, but we've manually removed the route, this gets
+    #        nothing...  we should be looking at ipv4.gateway and ipv4.routes
+    #        instead, i guess
+    #
+    routes=($(nmcli con show $1 |awk '/^IP4.ROUTE\[[^1]/ {print $4 $7}' | tr ',' ' '))
+    # FIXME: actually, i haven't run into a situation yet where DHCP is
+    #        providing additional static routes.  It can as dhcp option 121,
+    #        but i'd have to configure a DHCP server to do that to test
+    #        parsing.... should show up as 'classless-static-route', but i'm
+    #        not sure how nmcli displays it (e.g., single line w/ commas,
+    #        single line w/ spaces, multiple lines?)
+
+    # don't duplicte default gw if it shoes up both as gw and a static route
+    #
+    # NOTE: We're assuming that if the gw is listed as a static route, it's the
+    #       frist one.
+    #
+    
+    if [ "${gw[0]}" != "${routes[0]}" ] && [ "${gw[1]}" != "${routes[1]}" ]; then
+        echo ${gw[@]} ${routes[@]}
+    else
+        echo ${routes[@]}
+    fi
+}
+
+iface_get_state()
+{
+    state=$(nmcli con show $1 |awk '/^GENERAL.STATE/ {print $NF}')
+    echo $state
+}
+
+ip_is_reachable()
+{
+    ping -w2 $1 >/dev/null 2>&1
 }
 
 
 echo "--- START: $stamp ----------------------------------------------------"
+
+for iface in $iface_list; do
+    echo iface: $iface
+    
+    # check iface state, skip if down
+    if [ "$(iface_get_state $iface)" != "activated" ]; then
+        echo "skipping inactive interface"
+        continue
+    fi
+    
+    # figure out routes, first from manual config, then from nm info
+    v=${iface}_routes
+    routes=$(echo ${!v} | tr ',' ' ')
+    [ -z "$routes" ] && routes=$(iface_get_routes $iface)
+    if [ -z "$routes" ]; then
+        echo "WARNING: no routes for $iface"
+        continue
+    else
+        echo "routes: $routes"
+    fi
+    
+    # check for dependent ifaces
+    v=${iface}_deps
+    deps=${!v}
+    if [ -n "$deps" ]; then
+        echo "deps: $deps"
+    fi
+
+    # FIXME: What to do if there's more than one route... they should be listed
+    #        in pairs of `target` `gateway`... should we only add the routes if
+    #        they're ALL available?
+    #
+    #        In reality, all the use cases I've run into involve a single ip
+    #        being added as a route to multiple subnets... so we could just
+    #        check the first one.  If we do check subsequent ones, we should
+    #        doulbe check that it's actually a different IP so we don't waste
+    #        time pinging the same IP over and over.
+    #
+    #        Fow now, just take the 1st ip, which should be the 2nd item in
+    #        routes
+    #
+    r=($(echo $routes | tr ',' '\n'))
+    echo checking ${r[1]}
+    
+    #if [ ip_is_reachable $
+    
+done
+
+exit 0
 
 touch $lock
 
@@ -50,6 +150,9 @@ secondary_gw=$(detect_gw $secondary_iface)
 
 echo primary gw: $primary_gw
 echo secondary gw: $secondary_gw
+
+# FIXME: redo this so we're iterating over a list of preferred gateways so we
+#        can support more than 2
 
 # check reachability of primary
 ping -w2 $primary_gw >/dev/null 2>&1
