@@ -7,7 +7,201 @@
 # Licensed under the GPLv3. See the file COPYING for details. 
 #
 # This script executes a bunch of tc commands to setup traffic control queues
-# for a simple 3 queue system - voip, regular, and low priority traffic
+# for a simple 3 queue system - high, regular, and low priority traffic
 #
-# FIXME: should we do tc filters or mark packages w/ iptables?
+# This is based on examples from the following links:
 #
+# https://www.voip-info.org/qos-with-linux-using-prio-and-htb/
+# https://wiki.archlinux.org/title/Advanced_traffic_control
+# https://lartc.org/lartc.txt
+# https://tldp.org/HOWTO/html_single/Traffic-Control-HOWTO/
+#
+# I'm basically creating a High, Medium, and Low traffic queue to filter
+# traffic into for our uplink.  These 3 queues get rate limited to 50%, 40%,
+# and 10% of our uplink bandwitdh (although lower priority queues get to eat
+# steal unused bandwidth from other queues).  The downlink will just get
+# rate-limited to around what our downlink bandwidth speed is.
+#
+# In addition, we try to optimize a few things.
+
+
+DEV=eth0.3
+UPLINK=6144
+DOWNLINK=10240
+
+#### uplink ###################################################################
+#
+# This line sets a HTB qdisc on the root of $DEV, and it specifies that the
+# class 1:30 is used by default. It sets the name of the root as 1:, for future
+# references.
+tc qdisc add dev $DEV root handle 1: htb default 30
+
+# This creates a class called 1:1, which is direct descendant of root (the
+# parent is 1:), this class gets assigned also an HTB qdisc, and then it sets a
+# max rate of 6mbits, with a burst of 15k
+tc class add dev $DEV parent 1: classid 1:1 htb rate 6mbit burst 15k
+
+# The previous class has these branches:
+
+# Class 1:10, which is our HIGH priority class
+tc class add dev $DEV parent 1:1 classid 1:10 htb rate $(($UPLINK/50.0))kbit \
+   ceil ${DOWNLINK}kbit burst 15k prio 1
+
+# Class 1:20, which is our MEDIUM priority class
+tc class add dev $DEV parent 1:1 classid 1:20 htb rate $(($UPLINK/40.0))kbit \
+   ceil ${DOWNLINK}kbit burst 15k prio 2
+
+# Class 1:30, which has our LOW priority class (as in, where packets go to die)
+tc class add dev $DEV parent 1:1 classid 1:30 htb rate $(($UPLINK/10.0))kbit \
+   ceil ${DOWNLINK}kbit burst 15k prio 3
+
+# Martin Devera, author of HTB, then recommends SFQ for beneath these classes:
+tc qdisc add dev $DEV parent 1:10 handle 10: sfq perturb 10
+tc qdisc add dev $DEV parent 1:20 handle 20: sfq perturb 10
+tc qdisc add dev $DEV parent 1:30 handle 30: sfq perturb 10
+
+
+# Now, lets filter important stuff into the HIGH priority class
+#
+# TOS Minimum Delay
+tc filter add dev $DEV parent 1: protocol ip prio 10 u32 \
+   match ip tos 0x10 0xff \
+   flowid 1:10
+
+# ICMP (ip protocol 1) in the interactive class
+tc filter add dev ${DEV} parent 1: protocol ip prio 11 u32 \
+   match ip protocol 1 0xff flowid 1:10
+
+# To speed up downloads while an upload is going on, put ACK packets in the
+# HIGH priority class
+tc filter add dev ${DEV} parent 1: protocol ip prio 12 u32 \
+   match ip protocol 6 0xff \
+   match u8 0x05 0x0f at 0 \
+   match u16 0x0000 0xffc0 at 2 \
+   match u8 0x10 0xff at 33 \
+   flowid 1:10
+
+# Anything "marked" as "10" by iptables goes into the HIGH priority class
+tc filter add dev $DEV protocol ip parent 1: prio 1 handle 10 fw flowid 1:10
+
+# filter by destination port
+for port in $HIGH_DSTPORT; do
+    tc filter add dev $DEV parent 1: protocol ip prio 30 u32 \
+       match ip protocol 0x6 0xff \
+       match ip dport $port 0xffff \
+       flowid 1:10
+done
+# filter by source port
+for port in $HIGH_SRCPORT; do
+    tc filter add dev $DEV parent 1: protocol ip prio 31 u32 \
+       match ip protocol 0x6 0xff \
+       match ip sport $port 0xffff \
+       flowid 1:10
+done
+# filter fy destination address
+for addr in $HIGH_DSTADDR; do
+    tc filter add dev $DEV parent 1: protocol ip prio 33 u32 \
+       match ip protocol 0x6 0xff \
+       match ip dst $addr \
+       flowid 1:10
+done
+# filter by source address
+for addr in $HIGH_SRCADDR; do
+    tc filter add dev $DEV parent 1: protocol ip prio 32 u32 \
+       match ip protocol 0x6 0xff \
+       match ip src $addr \
+       flowid 1:10
+done
+
+
+# And now doom specified low priority stuff to the LOW priority class
+#
+# Anything "marked" as "30" by iptables goes into the LOW priority class
+tc filter add dev $DEV protocol ip parent 1: prio 1 handle 30 fw flowid 1:30
+
+# filter by destination port
+for port in $LOW_DSTPORT; do
+    tc filter add dev $DEV parent 1: protocol ip prio 30 u32 \
+       match ip protocol 0x6 0xff \
+       match ip dport $port 0xffff \
+       flowid 1:30
+done
+# filter by source port
+for port in $LOW_SRCPORT; do
+    tc filter add dev $DEV parent 1: protocol ip prio 31 u32 \
+       match ip protocol 0x6 0xff \
+       match ip sport $port 0xffff \
+       flowid 1:30
+done
+# filter by destination address
+for addr in $LOW_DSTADDR; do
+    tc filter add dev $DEV parent 1: protocol ip prio 33 u32 \
+       match ip protocol 0x6 0xff \
+       match ip dst $addr \
+       flowid 1:30
+done
+# filter by source address
+#
+# FIXME: this was a good idea... but... the source addr we have at this point
+#        has already been NATed (if that's a word).  if we've got specific
+#        addresses to send to the LOW priority class, we'll have to mark them
+#        in iptables instead.
+#
+#        i mean, in addition to this... becaue who knows, maybe in some
+#        scenario we'll have un-NATed hosts to control?
+#
+for addr in $LOW_SRCADDR; do
+    tc filter add dev $DEV parent 1: protocol ip prio 32 u32 \
+       match ip protocol 0x6 0xff \
+       match ip src $addr \
+       flowid 1:30
+done
+
+
+# FIXME: some examples don't set 'default' in the highest-level class, and then
+#        manually filter the remaining traffic into the default... not sure
+#        why.
+#
+# # rest is 'non-interactive' ie 'bulk' and ends up in the default queue
+# tc filter add dev ${DEV} parent 1: protocol ip prio 20 u32 \
+#    match ip src 0.0.0.0/0 \
+#    flowid 1:20
+
+
+#### downlink #################################################################
+#
+# Slow downloads down to somewhat less than the real speed to prevent queuing
+# at our ISP/modem.  Tune to see how high you can set it.  ISPs tend to have
+# *huge* queues to make sure big downloads are fast.
+#
+# attach ingress policer:
+tc qdisc add dev $DEV handle ffff: ingress
+
+# filter *everything* to it (0.0.0.0/0), drop everything that's coming in too
+# fast:
+tc filter add dev $DEV parent ffff: protocol ip prio 50 u32 \
+   match ip protocol 0x6 0xff police rate ${DOWNLINK}kbit burst 10k drop \
+   flowid :1
+
+
+
+
+
+
+
+
+
+# NOTE: undo all this like so:
+#
+# tc qdisc del dev eth0.3 root
+# tc qdisc del dev eth0.3 ingres
+#
+#
+#       tc -g class show dev eth0
+#           Shows classes as ASCII graph on eth0 interface.
+#
+#       tc -g -s class show dev eth0
+#           Shows classes as ASCII graph with stats info under each class.
+#
+# tc -s qdisc ls dev eth0.3
+# tc -s class ls dev eth0.3

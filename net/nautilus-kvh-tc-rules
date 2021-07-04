@@ -1,0 +1,36 @@
+#!/bin/bash
+#
+# Awesome Powers - scripts & config files of pure awesomeness
+#
+# Copyright 2018-2021 Michael D Labriola <michael.d.labriola@gmail.com>
+#
+# Licensed under the GPLv3. See the file COPYING for details. 
+#
+# This script wraps around tc-rules providiing settings for the Nautilus KVH
+# WAN interface.
+#
+#
+### higher priority stuff
+#
+# vlan5 (kvh) shouldn't have to worry about much... the only vlan's that can
+# forward out that interface are 20 and 100.  no voip, no video.  we just need
+# to make sure we don't swamp the interface.
+#
+# maybe prioritize specific devices?  that could be a bit of a maintenance
+# headache, but worth considering.
+#
+### lower priority stuff
+#
+# ??
+#
+### middle tier
+#
+# anything else
+#
+
+export DEV=eth0.5
+# FIXME: what was this... 5 down, 1 up?  i feel like it wasn't even that...
+export UPLINK=1024
+export DOWNLINK=5120
+
+exec $(dirname $0)/tc-rules $*

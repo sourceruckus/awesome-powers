@@ -1,0 +1,35 @@
+#!/bin/bash
+#
+# Awesome Powers - scripts & config files of pure awesomeness
+#
+# Copyright 2018-2021 Michael D Labriola <michael.d.labriola@gmail.com>
+#
+# Licensed under the GPLv3. See the file COPYING for details. 
+#
+# This script wraps around tc-rules providiing settings for the Cowesett Animal
+# Hospital's Cox Cable WAN interface.
+#
+#
+### higher priority stuff
+#
+# voip - not currently on it's own vlan, but planning to switch that as soon as
+# possible.  once i have, i can mark packets via iptables very easily.
+#
+# dicom - not nearly as important as the voip, but we could consider
+# identifying dicom traffic going from the ultrasound machine or digital xray
+# machine(s)...
+#
+### lower priority stuff
+#
+# anything coming from vlan100.
+#
+### middle tier
+#
+# anything else
+#
+
+export DEV=eth0.2
+export UPLINK=25600 # was this 25 or 20 up, i don't remember now
+export DOWNLINK=102400
+
+exec $(dirname $0)/tc-rules $*

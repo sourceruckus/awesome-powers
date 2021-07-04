@@ -1,0 +1,39 @@
+#!/bin/bash
+#
+# Awesome Powers - scripts & config files of pure awesomeness
+#
+# Copyright 2018-2021 Michael D Labriola <michael.d.labriola@gmail.com>
+#
+# Licensed under the GPLv3. See the file COPYING for details. 
+#
+# This script wraps around tc-rules providiing settings for the Cowesett Animal
+# Hospital's 4g modem WAN interface.
+#
+#
+### higher priority stuff
+#
+# voip - not currently on it's own vlan, but planning to switch that as soon as
+# possible.  once i have, i can mark packets via iptables very easily.
+#
+# dicom - not nearly as important as the voip, but we could consider
+# identifying dicom traffic going from the ultrasound machine or digital xray
+# machine(s)...
+#
+### lower priority stuff
+#
+# anything coming from vlan100.
+#
+### middle tier
+#
+# anything else
+#
+
+export DEV=eth0.3
+# FIXME: i have no idea what the up/down speeds are like on this... better test
+#        it out.  i seem to remember it being pretty bad wherever i placed the
+#        modem...  like 2M down, 1M up or something?
+#
+export UPLINK=1024 # was this 25 or 20 up, i don't remember now
+export DOWNLINK=2048
+
+exec $(dirname $0)/tc-rules $*

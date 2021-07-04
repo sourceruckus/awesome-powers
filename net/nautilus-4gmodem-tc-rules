@@ -1,0 +1,54 @@
+#!/bin/bash
+#
+# Awesome Powers - scripts & config files of pure awesomeness
+#
+# Copyright 2018-2021 Michael D Labriola <michael.d.labriola@gmail.com>
+#
+# Licensed under the GPLv3. See the file COPYING for details. 
+#
+# This script wraps around tc-rules providiing settings for the Nautilus
+# shoreside WAN interface.
+#
+#
+### higher priority stuff
+#
+# voip - originates on vlan2095, then gets tunneled through vlan4, which
+# eventualy sends the packets out whatever WAN interface is my gateway.  so,
+# how can we classify that traffic once it's in the queue for vlan3, for
+# example?  i can mark packets that originate from vlan2095 in iptables... but
+# will I be able to see that once the packets are encapsulated by the
+# voip-tunnel device?
+#
+# hmm... instead of vlan tags, we can match on ip address/netmask... except
+# it's going to be after NAT happens... so we would have to fwmark in iptables
+# all the traffic coming from vlan2095, then match on the mark in the tc
+# filter.  i think the fwmark will remain, even after all the voip-tunnel
+# shenanigans... will have to test it.
+#
+# could also try and identify voip via the destination address and/or port...
+#
+# video - originates on vlan96, goes out vlan95 to URI if available, otherwise
+# goes out normal WAN interface.  i can mark vlan96 packates in iptables.
+#
+# again, could try to identify destination address and/or port...
+#
+### lower priority stuff
+#
+# anything coming from vlan100.  the unifi manager can limit the wifi for us,
+# but we should further limit it w/ tc rules
+#
+# any other traffic we can identify and mark in iptables
+#
+### middle tier
+#
+# anything else
+#
+
+export DEV=eth0.7
+# FIXME: Well, this is really going to depend on where we are and what we're
+#        connected to...  let's stick 10 up/down in here as a random shot in
+#        the dark...
+export UPLINK=10240
+export DOWNLINK=10240
+
+exec $(dirname $0)/tc-rules $*
