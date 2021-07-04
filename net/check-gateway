@@ -23,8 +23,8 @@ lock=$0.lock
 stamp=$(date +"%Y-%m-%dT%H-%M-%S")
 
 # redirect all output to the logfile
-#exec 1>>$log
-#exec 2>&1
+exec 1>>$log
+exec 2>&1
 
 
 iface_get_routes()
@@ -78,105 +78,111 @@ iface_get_routes()
     fi
 }
 
+
 iface_get_state()
 {
     state=$(nmcli con show $1 |awk '/^GENERAL.STATE/ {print $NF}')
     echo $state
 }
 
-ip_is_reachable()
+
+iface_get_devname()
 {
-    ping -w2 $1 >/dev/null 2>&1
+    nmcli con show $1 |awk '/^GENERAL.IP-IFACE/ {print $NF}'
 }
 
 
-echo "--- START: $stamp ----------------------------------------------------"
+ip_is_reachable()
+{
+    ping -w1 $1 >/dev/null 2>&1
+}
 
-for iface in $iface_list; do
-    echo iface: $iface
-    
-    # check iface state, skip if down
-    if [ "$(iface_get_state $iface)" != "activated" ]; then
-        echo "skipping inactive interface"
-        continue
-    fi
-    
-    # figure out routes, first from manual config, then from nm info
-    v=${iface}_routes
-    routes=$(echo ${!v} | tr ',' ' ')
-    [ -z "$routes" ] && routes=$(iface_get_routes $iface)
-    if [ -z "$routes" ]; then
-        echo "WARNING: no routes for $iface"
-        continue
-    else
-        echo "routes: $routes"
-    fi
-    
-    # check for dependent ifaces
-    v=${iface}_deps
-    deps=${!v}
-    if [ -n "$deps" ]; then
-        echo "deps: $deps"
-    fi
 
-    # FIXME: What to do if there's more than one route... they should be listed
-    #        in pairs of `target` `gateway`... should we only add the routes if
-    #        they're ALL available?
-    #
-    #        In reality, all the use cases I've run into involve a single ip
-    #        being added as a route to multiple subnets... so we could just
-    #        check the first one.  If we do check subsequent ones, we should
-    #        doulbe check that it's actually a different IP so we don't waste
-    #        time pinging the same IP over and over.
-    #
-    #        Fow now, just take the 1st ip, which should be the 2nd item in
-    #        routes
-    #
-    r=($(echo $routes | tr ',' '\n'))
-    echo checking ${r[1]}
-    
-    #if [ ip_is_reachable $
-    
-done
+timestamp()
+{
+    date -Iseconds
+}
 
-exit 0
+
+check_ifaces()
+{
+    for iface in $*; do
+        #echo iface: $iface
+        
+        # check iface state, skip if down
+        if [ "$(iface_get_state $iface)" != "activated" ]; then
+            #echo "skipping inactive interface"
+            continue
+        fi
+
+        # get the device name
+        dev=$(iface_get_devname $iface)
+        #echo dev: $dev
+        
+        # figure out routes, first from manual config, then from nm info
+        v=${iface}_routes
+        routes=$(echo ${!v} | tr ',' ' ')
+        [ -z "$routes" ] && routes=$(iface_get_routes $iface)
+        if [ -z "$routes" ]; then
+            echo "WARNING: no routes for $iface"
+            continue
+        #else
+        #    echo "routes: $routes"
+        fi
+        
+        # FIXME: What to do if there's more than one route... they should be listed
+        #        in pairs of `target` `gateway`... should we only add the routes if
+        #        they're ALL available?
+        #
+        #        In reality, all the use cases I've run into involve a single ip
+        #        being added as a route to multiple subnets... so we could just
+        #        check the first one.  If we do check subsequent ones, we should
+        #        doulbe check that it's actually a different IP so we don't waste
+        #        time pinging the same IP over and over.
+        #
+        #        Fow now, just take the 1st ip, which should be the 2nd item in
+        #        routes
+        #
+        r=($(echo $routes | tr ',' '\n'))
+        #echo checking ${r[1]}
+
+        if ip_is_reachable ${r[1]}; then
+            # check if the route is already there
+            #
+            # NOTE: it doesn't hurt to add it a second time, but we want the
+            #       output of this script to be silent if nothing needed to be
+            #       changed.
+            #
+            # FIXME: oops, we also have to remove existing "bad"
+            #        routes... that's gonna be interesting...
+            #
+            #echo "interface $iface is up, adding it's routes"
+            for ((i=0; i<${#r[@]}; i+=2)); do
+                #echo ip route show ${r[i]} via ${r[i+1]} dev $dev
+                #blarg=$(ip route show ${r[i]} via ${r[i+1]} dev $dev)
+                #echo blarg: $blarg
+                if [ -z "$(ip route show ${r[i]} via ${r[i+1]} dev $dev)" ]; then
+                    go="ip route add ${r[i]} via ${r[i+1]} dev $dev"
+                    echo $(timestamp): $go
+                    eval $go
+                fi
+            done
+
+            # check for dependent ifaces
+            v=${iface}_deps
+            deps=${!v}
+            if [ -n "$deps" ]; then
+                #echo "deps: $deps"
+                check_ifaces $deps
+            fi
+
+            break
+        fi
+    done
+}
+
 
 touch $lock
-
-# detect primary gateway
-primary_gw=$(detect_gw $primary_iface)
-# detect secondary gateway
-secondary_gw=$(detect_gw $secondary_iface)
-
-echo primary gw: $primary_gw
-echo secondary gw: $secondary_gw
-
-# FIXME: redo this so we're iterating over a list of preferred gateways so we
-#        can support more than 2
-
-# check reachability of primary
-ping -w2 $primary_gw >/dev/null 2>&1
-if [ $? -ne 0 ]; then
-    echo "$primary_gw is NOT reachable"
-    # now add secondary gateway
-    #
-    # NOTE: We use 0.0.0.0/1 nad 128.0.0.0/1 instead of 0.0.0.0/0 because it
-    #       covers the same ip-range, but counts as a higher priority route.
-    #       This way we never have to remove the primary gw, just add/remove
-    #       the secondary one.
-    #
-    # FIXME: I wonder if we should make this a bit smarter, only add/remove
-    #        routes if needed, and send an email alert if we've failed over?
-    #
-    ip route add 0.0.0.0/1 via $secondary_gw >/dev/null 2>&1
-    ip route add 128.0.0.0/1 via $secondary_gw >/dev/null 2>&1
-else
-    echo "$primary_gw IS reachable"
-    # remove secondary gateway
-    ip route del 0.0.0.0/1 via $secondary_gw >/dev/null 2>&1
-    ip route del 128.0.0.0/1 via $secondary_gw >/dev/null 2>&1
-fi
-
-echo "--- END: $stamp (at $(date +"%Y-%m-%dT%H-%M-%S")) -----------------------------"
+check_ifaces $iface_list
 rm -f $lock
 exit 0
