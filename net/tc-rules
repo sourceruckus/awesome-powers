@@ -23,11 +23,16 @@
 # rate-limited to around what our downlink bandwidth speed is.
 #
 # In addition, we try to optimize a few things.
+#
+#
+# These variables should be set in the environemnt, or by a wrapper script,
+# prior to execution
+#
+# DEV - the device to be managed (e.g., eth0)
+# UPLINK - the uplink speed in kbits
+# DOWNLINK - the downlink speed in kbits
+#
 
-
-DEV=eth0.3
-UPLINK=6144
-DOWNLINK=10240
 
 #### uplink ###################################################################
 #
