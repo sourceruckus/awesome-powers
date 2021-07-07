@@ -104,6 +104,41 @@ timestamp()
 }
 
 
+remove_all_managed_routes()
+{
+    [ -n "$NO_MORE_REMOVING" ] && return
+    local iface
+    local dev
+    local v
+    local routes
+    local r
+    local i
+    local go
+    for iface in $*; do
+        # get the device name
+        dev=$(iface_get_devname $iface)
+        
+        # figure out routes, first from manual config, then from nm info
+        v=${iface}_routes
+        routes=$(echo ${!v} | tr ',' ' ')
+        [ -z "$routes" ] && routes=$(iface_get_routes $iface)
+        if [ -z "$routes" ]; then
+            continue
+        fi
+
+        r=($(echo $routes | tr ',' '\n'))
+        for ((i=0; i<${#r[@]}; i+=2)); do
+            if [ -z "$(ip route show ${r[i]} via ${r[i+1]} dev $dev)" ]; then
+                go="ip route del ${r[i]} via ${r[i+1]} dev $dev"
+                echo $(timestamp): $go
+                eval $go
+            fi
+        done
+    done
+    export NO_MORE_REMOVING=y
+}
+
+
 check_ifaces()
 {
     for iface in $*; do
@@ -153,20 +188,15 @@ check_ifaces()
             #       output of this script to be silent if nothing needed to be
             #       changed.
             #
-            # FIXME: oops, we also have to remove existing "bad"
-            #        routes... that's gonna be interesting...
-            #
-            #        i guess, if we're about to add a new set of routes, we
-            #        should iterate over the entire list and remove all
-            #        controlled routes first.  some may get removed only to get
-            #        er-added... but that will catch everything.
-            #
             #echo "interface $iface is up, adding it's routes"
             for ((i=0; i<${#r[@]}; i+=2)); do
                 #echo ip route show ${r[i]} via ${r[i+1]} dev $dev
                 #blarg=$(ip route show ${r[i]} via ${r[i+1]} dev $dev)
                 #echo blarg: $blarg
                 if [ -z "$(ip route show ${r[i]} via ${r[i+1]} dev $dev)" ]; then
+                    # we're really modifying the routing table, clear out all
+                    # managed routes first
+                    remove_all_managed_routes $*
                     go="ip route add ${r[i]} via ${r[i+1]} dev $dev"
                     echo $(timestamp): $go
                     eval $go
