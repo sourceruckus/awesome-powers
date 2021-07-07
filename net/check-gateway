@@ -65,7 +65,7 @@ iface_get_routes()
     #        not sure how nmcli displays it (e.g., single line w/ commas,
     #        single line w/ spaces, multiple lines?)
 
-    # don't duplicte default gw if it shoes up both as gw and a static route
+    # don't duplicte default gw if it shows up both as gw and a static route
     #
     # NOTE: We're assuming that if the gw is listed as a static route, it's the
     #       frist one.
@@ -155,6 +155,11 @@ check_ifaces()
             #
             # FIXME: oops, we also have to remove existing "bad"
             #        routes... that's gonna be interesting...
+            #
+            #        i guess, if we're about to add a new set of routes, we
+            #        should iterate over the entire list and remove all
+            #        controlled routes first.  some may get removed only to get
+            #        er-added... but that will catch everything.
             #
             #echo "interface $iface is up, adding it's routes"
             for ((i=0; i<${#r[@]}; i+=2)); do
