@@ -49,7 +49,7 @@ if [ -z "$UP_MB" ]; then
     echo "UP_MB not specified"
     exit 1
 fi
-if [ -z "DOWN_MB" ]; then
+if [ -z "$DOWN_MB" ]; then
     echo "DOWN_MB not specified"
     exit 1
 fi
