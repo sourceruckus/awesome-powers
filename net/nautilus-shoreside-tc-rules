@@ -48,7 +48,7 @@ export DEV=eth0.6
 # FIXME: Well, this is really going to depend on where we are and what we're
 #        plugged into...  let's stick 50 up/down in here becaue I'm pretty sure
 #        that's what we were getting from altasea's att&t connection.
-export UPLINK=51200
-export DOWNLINK=51200
+export UP_MB=50
+export DOWN_MB=50
 
 exec $(dirname $0)/tc-rules $*

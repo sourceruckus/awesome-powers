@@ -61,7 +61,7 @@
 #
 
 export DEV=eth0.3
-export UPLINK=20480
-export DOWNLINK=20480
+export UP_MB=20
+export DOWN_MB=20
 
 exec $(dirname $0)/tc-rules $*

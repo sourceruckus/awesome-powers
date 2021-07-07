@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 #
 # Awesome Powers - scripts & config files of pure awesomeness
 #
@@ -33,9 +33,33 @@
 # prior to execution
 #
 # DEV - the device to be managed (e.g., eth0)
-# UPLINK - the uplink speed in kbits
-# DOWNLINK - the downlink speed in kbits
+# UP_MB - the uplink speed in mbits
+# DOWN_MB - the downlink speed in mbits
 #
+
+# check for required variables
+if [ -z "$DEV" ]; then
+    echo "DEV not specified"
+    exit 1
+fi
+if [ -z "$UP_MB" ]; then
+    echo "UP_MB not specified"
+    exit 1
+fi
+if [ -z "DOWN_MB" ]; then
+    echo "DOWN_MB not specified"
+    exit 1
+fi
+
+# do some math - we need to divide up the bandwidth, which requires us to
+# convert from mbit to kbit
+UP_KB=$((UP_MB*1000))
+DOWN_KB=$((DOWN_MB*1000))
+
+
+# first, clear out old config
+tc qdisc del dev $DEV root >/dev/null 2>&1
+tc qdisc del dev $DEV ingres >/dev/null 2>&1
 
 
 #### uplink ###################################################################
@@ -48,21 +72,21 @@ tc qdisc add dev $DEV root handle 1: htb default 20
 # This creates a class called 1:1, which is direct descendant of root (the
 # parent is 1:), this class gets assigned also an HTB qdisc, and then it sets a
 # max rate of 6mbits, with a burst of 15k
-tc class add dev $DEV parent 1: classid 1:1 htb rate $(($UPLINK*95/100))kbit burst 15k
+tc class add dev $DEV parent 1: classid 1:1 htb rate $(($UP_KB*95/100))kbit burst 15k
 
 # The previous class has these branches:
 
 # Class 1:10, which is our HIGH priority class
-tc class add dev $DEV parent 1:1 classid 1:10 htb rate $(($UPLINK*80/100))kbit \
-   ceil $(($UPLINK*95/100))kbit burst 15k prio 1
+tc class add dev $DEV parent 1:1 classid 1:10 htb rate $(($UP_KB*80/100))kbit \
+   ceil $(($UP_KB*95/100))kbit burst 15k prio 1
 
 # Class 1:20, which is our MEDIUM priority class
-tc class add dev $DEV parent 1:1 classid 1:20 htb rate $(($UPLINK*50/100))kbit \
-   ceil $(($UPLINK*95/100))kbit burst 15k prio 2
+tc class add dev $DEV parent 1:1 classid 1:20 htb rate $(($UP_KB*50/100))kbit \
+   ceil $(($UP_KB*95/100))kbit burst 15k prio 2
 
 # Class 1:30, which has our LOW priority class (as in, where packets go to die)
-tc class add dev $DEV parent 1:1 classid 1:30 htb rate $(($UPLINK*10/100))kbit \
-   ceil $(($UPLINK*95/100))kbit burst 15k prio 3
+tc class add dev $DEV parent 1:1 classid 1:30 htb rate $(($UP_KB*10/100))kbit \
+   ceil $(($UP_KB*95/100))kbit burst 15k prio 3
 
 # Martin Devera, author of HTB, then recommends SFQ for beneath these classes:
 tc qdisc add dev $DEV parent 1:10 handle 10: sfq perturb 10
@@ -75,22 +99,13 @@ tc qdisc add dev $DEV parent 1:30 handle 30: sfq perturb 10
 # Interactive Traffic - Minimize Delay (MD), Minimize Monetary Cost (MMC) + MD,
 # Maximize Riliability (MR) + MD, and MMC+MR+MD.  See tc-prio(8) for details.
 #
-# SAT1 = 0x00 = 000000 = nothing special
-# SAT2 = 0x28 = 101000 = MR+MD
-# SAT3 = 0x28
-#
-# bad1 = 0xb8 = 01111000 = MR+MT+MD + random leading 01?
-#
 # NOTE: We do this using the meta(priority) field to make the rule easier.
 #
 tc filter add dev $DEV parent 1: basic \
    match 'meta(priority eq 6)' classid 1:10
 
-# FIXME: classid vs flowid?
-#tc filter add dev $DEV parent 1: protocol ip prio 10 u32 \
-#   match ip tos 0x10 0xff \
-#   flowid 1:10
-
+# NOTE: check /etc/protocols for protocol numbers
+#
 # ICMP (ip protocol 1) in the interactive class
 tc filter add dev ${DEV} parent 1: protocol ip prio 11 u32 \
    match ip protocol 1 0xff flowid 1:10
@@ -203,15 +218,41 @@ done
 # at our ISP/modem.  Tune to see how high you can set it.  ISPs tend to have
 # *huge* queues to make sure big downloads are fast.
 #
-# attach ingress policer:
-tc qdisc add dev $DEV handle ffff: ingress
-
-# filter *everything* to it (0.0.0.0/0), drop everything that's coming in too
-# fast:
-tc filter add dev $DEV parent ffff: protocol ip prio 50 u32 \
-   match ip protocol 0x6 0xff police rate $(($DOWNLINK*95/100))kbit burst 10k drop \
-   flowid :1
-
+# FIXME: that's a nope!  this makes the internet basically unusable... maybe
+#        there's some egress shaping needed to make it work better... ?
+#
+#        i did see some stuff about increast burst to make things work
+#        better...
+#
+## attach ingress policer:
+#tc qdisc add dev $DEV handle ffff: ingress
+#
+## filter *everything* to it (0.0.0.0/0), drop everything that's coming in too
+## fast:
+##
+## https://blog.stevedoria.net/20050906/ingress-policing-with-linux-and-tc
+##
+## burst was 10k, 20k makes pages almost loadable... 
+#tc filter add dev $DEV parent ffff: protocol ip prio 50 u32 \
+#   match ip src 0.0.0.0/0 police rate $(($DOWN_KB*95/100))kbit \
+#   burst 10k drop \
+#   flowid :1
+#
+# Let's try this instead: ingress shaping via a cake egress shaper on a virtual
+# interface that receives all our inbound traffic and then send it back to us?
+# I think?
+#
+# https://www.bufferbloat.net/projects/codel/wiki/CakeRecipes/
+#
+# Hmm, sounded promising, but i couldn't ping 8.8.8.8 at all...
+#
+#ip link add name ifb4eth0 type ifb
+#tc qdisc del dev $DEV ingress
+#tc qdisc add dev $DEV handle ffff: ingress
+#tc qdisc del dev ifb4eth0 root
+#tc qdisc add dev ifb4eth0 root cake bandwidth $(($UP_KB*95/100))kbit besteffort
+#ip link set ifb4eth0 up # important 
+#tc filter add dev $DEV parent ffff:  matchall action mirred egress redirect dev ifb4eth0
 
 
 
@@ -237,6 +278,36 @@ tc filter add dev $DEV parent ffff: protocol ip prio 50 u32 \
 #
 # tc -s -d filter list dev $DEV
 #
+# tc -s -g qdisc ls ingress dev $DEV
+#
+# tc filter show ingress dev $DEV
+#
+# tc qdisc show dev eth0.3
+#qdisc htb 1: root refcnt 2 r2q 10 default 0x20 direct_packets_stat 12675 direct_qlen 1000
+#qdisc sfq 30: parent 1:30 limit 127p quantum 1518b depth 127 divisor 1024 perturb 10sec 
+#qdisc sfq 10: parent 1:10 limit 127p quantum 1518b depth 127 divisor 1024 perturb 10sec 
+#qdisc sfq 20: parent 1:20 limit 127p quantum 1518b depth 127 divisor 1024 perturb 10sec 
+#qdisc ingress ffff: parent ffff:fff1 ---------------- 
+#root@netsrv1:~# tc filter show dev eth0 parent ffff:
+#root@netsrv1:~# 
+#root@netsrv1:~# tc filter show dev eth0.3 parent ffff:
+#filter protocol ip pref 50 u32 chain 0 
+#filter protocol ip pref 50 u32 chain 0 fh 800: ht divisor 1 
+#filter protocol ip pref 50 u32 chain 0 fh 800::800 order 2048 key ht 800 bkt 0 flowid :1 not_in_hw 
+#  match 00060000/00ff0000 at 8
+# police 0x1 rate 19456Kbit burst 10Kb mtu 2Kb action drop overhead 0b 
+#	ref 1 bind 1
+#
+#filter protocol ip pref 50 u32 chain 0 fh 800::801 order 2049 key ht 800 bkt 0 flowid :1 not_in_hw 
+#  match 00060000/00ff0000 at 8
+# police 0x2 rate 8192Kbit burst 10Kb mtu 2Kb action drop overhead 0b 
+#	ref 1 bind 1
+#
+#root@netsrv1:~# tc qdisc del dev eth0.3 ingress
+#root@netsrv1:~# tc filter show dev eth0.3 parent ffff:
+#
 # test tos flags with ping
 #
 # ping -Q 0x48
+#
+#

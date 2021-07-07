@@ -45,8 +45,7 @@
 #
 
 export DEV=eth0.95
-# FIXME: i don't remember... slower than than newtec.  17/9?
-export UPLINK=9216
-export DOWNLINK=17408
+export UP_MB=13
+export DOWN_MB=9
 
 exec $(dirname $0)/tc-rules $*

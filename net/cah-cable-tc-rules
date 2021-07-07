@@ -29,7 +29,7 @@
 #
 
 export DEV=eth0.2
-export UPLINK=25600 # was this 25 or 20 up, i don't remember now
-export DOWNLINK=102400
+export UP_MB=20
+export DOWN_MB=100
 
 exec $(dirname $0)/tc-rules $*

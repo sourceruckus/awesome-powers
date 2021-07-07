@@ -48,7 +48,7 @@ export DEV=eth0.7
 # FIXME: Well, this is really going to depend on where we are and what we're
 #        connected to...  let's stick 10 up/down in here as a random shot in
 #        the dark...
-export UPLINK=10240
-export DOWNLINK=10240
+export UP_MB=10
+export DOWN_MB=10
 
 exec $(dirname $0)/tc-rules $*

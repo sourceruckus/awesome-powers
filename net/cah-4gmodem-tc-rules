@@ -33,7 +33,7 @@ export DEV=eth0.3
 #        it out.  i seem to remember it being pretty bad wherever i placed the
 #        modem...  like 2M down, 1M up or something?
 #
-export UPLINK=1024 # was this 25 or 20 up, i don't remember now
-export DOWNLINK=2048
+export UP_MB=2
+export DOWN_MB=2
 
 exec $(dirname $0)/tc-rules $*
