@@ -1,0 +1,42 @@
+#!/bin/sh -e
+#
+# Awesome Powers - scripts & config files of pure awesomeness
+#
+# Copyright 2018-2021 Michael D Labriola <michael.d.labriola@gmail.com>
+#
+# Licensed under the GPLv3. See the file COPYING for details. 
+#
+# Automatically run the appropriate tc-rules script when an interface comes up.
+#
+
+AP=/scrap/awesome-powers
+
+case "$2" in
+    up)
+        echo "applying tc-rules for $CONNECTION_ID ($DEVICE_IP_IFACE)"
+        # look through tc-rules scripts for one with a matching device
+        gotit=
+        for x in $AP/net/*-tc-rules; do
+            dev=$(awk -F= '/DEV=/ {print $NF}' $x)
+            if [ "$dev" = "$DEVICE_IP_IFACE" ]; then
+                gotit=y
+                break
+            fi
+        done
+        if [ -n "$gotit" ]; then
+            echo "executing $x"
+            $x
+        else
+            echo "none found"
+        fi
+        ;;
+    down)
+        # nothing to do
+        ;;
+    *)
+        echo "$0: called with unknown action \`$2'" 1>&2
+        exit 0
+        ;;
+esac
+
+exit 0
