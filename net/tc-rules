@@ -28,6 +28,9 @@
 #
 # In addition, we try to optimize a few things.
 #
+# You can query queue statistics like this:
+#
+#   tc -g -s class show dev $DEV
 #
 # These variables should be set in the environemnt, or by a wrapper script,
 # prior to execution
@@ -71,7 +74,7 @@ tc qdisc add dev $DEV root handle 1: htb default 20
 
 # This creates a class called 1:1, which is direct descendant of root (the
 # parent is 1:), this class gets assigned also an HTB qdisc, and then it sets a
-# max rate of 6mbits, with a burst of 15k
+# max rate of 95% of our uplink speed, with a burst of 15k
 tc class add dev $DEV parent 1: classid 1:1 htb rate $(($UP_KB*95/100))kbit burst 15k
 
 # The previous class has these branches:
@@ -202,16 +205,6 @@ for addr in $LOW_SRCADDR; do
 done
 
 
-# FIXME: some examples don't set 'default' in the highest-level class, and then
-#        manually filter the remaining traffic into the default... not sure
-#        why.
-#
-# # rest is 'non-interactive' ie 'bulk' and ends up in the default queue
-# tc filter add dev ${DEV} parent 1: protocol ip prio 20 u32 \
-#    match ip src 0.0.0.0/0 \
-#    flowid 1:20
-
-
 #### downlink #################################################################
 #
 # Slow downloads down to somewhat less than the real speed to prevent queuing
@@ -253,61 +246,3 @@ done
 #tc qdisc add dev ifb4eth0 root cake bandwidth $(($UP_KB*95/100))kbit besteffort
 #ip link set ifb4eth0 up # important 
 #tc filter add dev $DEV parent ffff:  matchall action mirred egress redirect dev ifb4eth0
-
-
-
-
-
-
-
-
-# NOTE: undo all this like so:
-#
-# tc qdisc del dev $DEV root
-# tc qdisc del dev $DEV ingres
-#
-#
-#       tc -g class show dev $DEV
-#           Shows classes as ASCII graph on eth0 interface.
-#
-#       tc -g -s class show dev $DEV
-#           Shows classes as ASCII graph with stats info under each class.
-#
-# tc -s qdisc ls dev $DEV
-# tc -s class ls dev $DEV
-#
-# tc -s -d filter list dev $DEV
-#
-# tc -s -g qdisc ls ingress dev $DEV
-#
-# tc filter show ingress dev $DEV
-#
-# tc qdisc show dev eth0.3
-#qdisc htb 1: root refcnt 2 r2q 10 default 0x20 direct_packets_stat 12675 direct_qlen 1000
-#qdisc sfq 30: parent 1:30 limit 127p quantum 1518b depth 127 divisor 1024 perturb 10sec 
-#qdisc sfq 10: parent 1:10 limit 127p quantum 1518b depth 127 divisor 1024 perturb 10sec 
-#qdisc sfq 20: parent 1:20 limit 127p quantum 1518b depth 127 divisor 1024 perturb 10sec 
-#qdisc ingress ffff: parent ffff:fff1 ---------------- 
-#root@netsrv1:~# tc filter show dev eth0 parent ffff:
-#root@netsrv1:~# 
-#root@netsrv1:~# tc filter show dev eth0.3 parent ffff:
-#filter protocol ip pref 50 u32 chain 0 
-#filter protocol ip pref 50 u32 chain 0 fh 800: ht divisor 1 
-#filter protocol ip pref 50 u32 chain 0 fh 800::800 order 2048 key ht 800 bkt 0 flowid :1 not_in_hw 
-#  match 00060000/00ff0000 at 8
-# police 0x1 rate 19456Kbit burst 10Kb mtu 2Kb action drop overhead 0b 
-#	ref 1 bind 1
-#
-#filter protocol ip pref 50 u32 chain 0 fh 800::801 order 2049 key ht 800 bkt 0 flowid :1 not_in_hw 
-#  match 00060000/00ff0000 at 8
-# police 0x2 rate 8192Kbit burst 10Kb mtu 2Kb action drop overhead 0b 
-#	ref 1 bind 1
-#
-#root@netsrv1:~# tc qdisc del dev eth0.3 ingress
-#root@netsrv1:~# tc filter show dev eth0.3 parent ffff:
-#
-# test tos flags with ping
-#
-# ping -Q 0x48
-#
-#
