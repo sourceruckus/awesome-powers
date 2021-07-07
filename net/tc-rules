@@ -15,12 +15,16 @@
 # https://wiki.archlinux.org/title/Advanced_traffic_control
 # https://lartc.org/lartc.txt
 # https://tldp.org/HOWTO/html_single/Traffic-Control-HOWTO/
+# http://linux-ip.net/gl/tc-filters/tc-filters.html
+# https://wiki.debian.org/TrafficControl
 #
 # I'm basically creating a High, Medium, and Low traffic queue to filter
-# traffic into for our uplink.  These 3 queues get rate limited to 50%, 40%,
-# and 10% of our uplink bandwitdh (although lower priority queues get to eat
-# steal unused bandwidth from other queues).  The downlink will just get
-# rate-limited to around what our downlink bandwidth speed is.
+# traffic into for our uplink.  These 3 queues get bandwidth guarantees
+# decreasing from 80%, 50%, and 10% of our uplink bandwitdh (although lower
+# priority queues get to eat unused bandwidth from other queues), as well as
+# decreasing priority (well, the value goes up but smaller is higher).  The
+# downlink will just get rate-limited to around what our downlink bandwidth
+# speed is.
 #
 # In addition, we try to optimize a few things.
 #
@@ -39,26 +43,26 @@
 # This line sets a HTB qdisc on the root of $DEV, and it specifies that the
 # class 1:30 is used by default. It sets the name of the root as 1:, for future
 # references.
-tc qdisc add dev $DEV root handle 1: htb default 30
+tc qdisc add dev $DEV root handle 1: htb default 20
 
 # This creates a class called 1:1, which is direct descendant of root (the
 # parent is 1:), this class gets assigned also an HTB qdisc, and then it sets a
 # max rate of 6mbits, with a burst of 15k
-tc class add dev $DEV parent 1: classid 1:1 htb rate 6mbit burst 15k
+tc class add dev $DEV parent 1: classid 1:1 htb rate $(($UPLINK*95/100))kbit burst 15k
 
 # The previous class has these branches:
 
 # Class 1:10, which is our HIGH priority class
-tc class add dev $DEV parent 1:1 classid 1:10 htb rate $(($UPLINK/50.0))kbit \
-   ceil ${DOWNLINK}kbit burst 15k prio 1
+tc class add dev $DEV parent 1:1 classid 1:10 htb rate $(($UPLINK*80/100))kbit \
+   ceil $(($UPLINK*95/100))kbit burst 15k prio 1
 
 # Class 1:20, which is our MEDIUM priority class
-tc class add dev $DEV parent 1:1 classid 1:20 htb rate $(($UPLINK/40.0))kbit \
-   ceil ${DOWNLINK}kbit burst 15k prio 2
+tc class add dev $DEV parent 1:1 classid 1:20 htb rate $(($UPLINK*50/100))kbit \
+   ceil $(($UPLINK*95/100))kbit burst 15k prio 2
 
 # Class 1:30, which has our LOW priority class (as in, where packets go to die)
-tc class add dev $DEV parent 1:1 classid 1:30 htb rate $(($UPLINK/10.0))kbit \
-   ceil ${DOWNLINK}kbit burst 15k prio 3
+tc class add dev $DEV parent 1:1 classid 1:30 htb rate $(($UPLINK*10/100))kbit \
+   ceil $(($UPLINK*95/100))kbit burst 15k prio 3
 
 # Martin Devera, author of HTB, then recommends SFQ for beneath these classes:
 tc qdisc add dev $DEV parent 1:10 handle 10: sfq perturb 10
@@ -68,18 +72,38 @@ tc qdisc add dev $DEV parent 1:30 handle 30: sfq perturb 10
 
 # Now, lets filter important stuff into the HIGH priority class
 #
-# TOS Minimum Delay
-tc filter add dev $DEV parent 1: protocol ip prio 10 u32 \
-   match ip tos 0x10 0xff \
-   flowid 1:10
+# Interactive Traffic - Minimize Delay (MD), Minimize Monetary Cost (MMC) + MD,
+# Maximize Riliability (MR) + MD, and MMC+MR+MD.  See tc-prio(8) for details.
+#
+# SAT1 = 0x00 = 000000 = nothing special
+# SAT2 = 0x28 = 101000 = MR+MD
+# SAT3 = 0x28
+#
+# bad1 = 0xb8 = 01111000 = MR+MT+MD + random leading 01?
+#
+# NOTE: We do this using the meta(priority) field to make the rule easier.
+#
+tc filter add dev $DEV parent 1: basic \
+   match 'meta(priority eq 6)' classid 1:10
+
+# FIXME: classid vs flowid?
+#tc filter add dev $DEV parent 1: protocol ip prio 10 u32 \
+#   match ip tos 0x10 0xff \
+#   flowid 1:10
 
 # ICMP (ip protocol 1) in the interactive class
 tc filter add dev ${DEV} parent 1: protocol ip prio 11 u32 \
    match ip protocol 1 0xff flowid 1:10
 
+# DNS (udp is protocol 17 or 0x11)
+tc filter add dev ${DEV} parent 1: protocol ip prio 12 u32 \
+   match ip protocol 17 0xff \
+   match ip dport 53 0xffff \
+   flowid 1:10
+
 # To speed up downloads while an upload is going on, put ACK packets in the
 # HIGH priority class
-tc filter add dev ${DEV} parent 1: protocol ip prio 12 u32 \
+tc filter add dev ${DEV} parent 1: protocol ip prio 13 u32 \
    match ip protocol 6 0xff \
    match u8 0x05 0x0f at 0 \
    match u16 0x0000 0xffc0 at 2 \
@@ -103,7 +127,7 @@ for port in $HIGH_SRCPORT; do
        match ip sport $port 0xffff \
        flowid 1:10
 done
-# filter fy destination address
+# filter by destination address
 for addr in $HIGH_DSTADDR; do
     tc filter add dev $DEV parent 1: protocol ip prio 33 u32 \
        match ip protocol 0x6 0xff \
@@ -185,7 +209,7 @@ tc qdisc add dev $DEV handle ffff: ingress
 # filter *everything* to it (0.0.0.0/0), drop everything that's coming in too
 # fast:
 tc filter add dev $DEV parent ffff: protocol ip prio 50 u32 \
-   match ip protocol 0x6 0xff police rate ${DOWNLINK}kbit burst 10k drop \
+   match ip protocol 0x6 0xff police rate $(($DOWNLINK*95/100))kbit burst 10k drop \
    flowid :1
 
 
@@ -198,15 +222,21 @@ tc filter add dev $DEV parent ffff: protocol ip prio 50 u32 \
 
 # NOTE: undo all this like so:
 #
-# tc qdisc del dev eth0.3 root
-# tc qdisc del dev eth0.3 ingres
+# tc qdisc del dev $DEV root
+# tc qdisc del dev $DEV ingres
 #
 #
-#       tc -g class show dev eth0
+#       tc -g class show dev $DEV
 #           Shows classes as ASCII graph on eth0 interface.
 #
-#       tc -g -s class show dev eth0
+#       tc -g -s class show dev $DEV
 #           Shows classes as ASCII graph with stats info under each class.
 #
-# tc -s qdisc ls dev eth0.3
-# tc -s class ls dev eth0.3
+# tc -s qdisc ls dev $DEV
+# tc -s class ls dev $DEV
+#
+# tc -s -d filter list dev $DEV
+#
+# test tos flags with ping
+#
+# ping -Q 0x48

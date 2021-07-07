@@ -31,6 +31,6 @@
 export DEV=eth0.5
 # FIXME: what was this... 5 down, 1 up?  i feel like it wasn't even that...
 export UPLINK=1024
-export DOWNLINK=5120
+export DOWNLINK=1024
 
 exec $(dirname $0)/tc-rules $*

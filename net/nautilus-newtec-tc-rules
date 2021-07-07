@@ -27,10 +27,24 @@
 #
 # could also try and identify voip via the destination address and/or port...
 #
+# After talking to Rachel, it sounds like we won't be able to clasify the voip
+# traffic by vlan, because the traffic is encapsulated in the voip-tunnel in
+# such a way that we can't see that info.
+#
+# voip:  131.128.101.42 udp 22
+# vlink: 131.128.101.43 udp 22
+#
 # video - originates on vlan96, goes out vlan95 to URI if available, otherwise
 # goes out normal WAN interface.  i can mark vlan96 packates in iptables.
 #
 # again, could try to identify destination address and/or port...
+#
+# Could look at the TOS field set by the encoders (and controlled via their web
+# gui).
+#
+# outreach stuff - all this traffic should originate from the studio in the
+# van, from one or both of the mac mini's in there.  studio mac and playback
+# mac, I think.  We could just prioritize any traffic coming from those 2 IPs.
 #
 ### lower priority stuff
 #
@@ -41,12 +55,12 @@
 #
 ### middle tier
 #
-# anything else
+# anything else.  could consider letting the studio interaction stuff fall in
+# here... that would prioritize it below the voip, vlink, and encoders, but
+# above random joe watching youtube on the public network.
 #
 
 export DEV=eth0.3
-# FIXME: i thought this was supposed to be 20 up and down...  but it sure
-#        doesn't seem like it.
 export UPLINK=20480
 export DOWNLINK=20480
 
