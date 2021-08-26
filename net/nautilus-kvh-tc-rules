@@ -6,7 +6,7 @@
 #
 # Licensed under the GPLv3. See the file COPYING for details. 
 #
-# This script wraps around tc-rules providiing settings for the Nautilus KVH
+# This script wraps around tc-rules providing settings for the Nautilus KVH
 # WAN interface.
 #
 #

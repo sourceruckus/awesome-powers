@@ -6,7 +6,7 @@
 #
 # Licensed under the GPLv3. See the file COPYING for details. 
 #
-# This script wraps around tc-rules providiing settings for the Cowesett Animal
+# This script wraps around tc-rules providing settings for the Cowesett Animal
 # Hospital's 4g modem WAN interface.
 #
 #
