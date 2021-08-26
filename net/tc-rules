@@ -31,6 +31,8 @@
 # You can query queue statistics like this:
 #
 #   tc -g -s class show dev $DEV
+#   tc -s qdisc show dev $DEV
+#   tc -s filter show dev $DEV
 #
 # These variables should be set in the environemnt, or by a wrapper script,
 # prior to execution
