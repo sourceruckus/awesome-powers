@@ -61,7 +61,9 @@
 #
 
 export DEV=eth0.3
-export UP_MB=20
-export DOWN_MB=20
+# NOTE: The newtec's give us 20 mbit up/down, but we split it between vlan95
+#       and vlan3.  Combined, they cannot exceed 20.  Keep them in sync!
+export UP_MB=10
+export DOWN_MB=18
 
 exec $(dirname $0)/tc-rules $*

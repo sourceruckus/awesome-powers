@@ -45,7 +45,18 @@
 #
 
 export DEV=eth0.95
-export UP_MB=13
-export DOWN_MB=9
+# FIXME: If this is being used for vlan95 while we're using the newtec modems,
+#        we need to tweak this.  The newtec setup gives us 20 up/down, but
+#        really we split it accross two vlan interfaces.  Vlan3 is for basic
+#        internet traffic, and vlan95 is for video back to URI.
+#
+#export UP_MB=13
+#export DOWN_MB=9
+#
+# NOTE: The newtec's give us 20 mbit up/down, but we split it between vlan95
+#       and vlan3.  Combined, they cannot exceed 20.  Keep them in sync!
+#
+export UP_MB=10
+export DOWN_MB=2
 
 exec $(dirname $0)/tc-rules $*
