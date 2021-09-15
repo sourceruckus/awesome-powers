@@ -104,8 +104,46 @@ timestamp()
 }
 
 
+iface_remove_routes()
+{
+    local iface
+    local dev
+    local v
+    local routes
+    local r
+    local i
+    local go
+
+    iface=$1
+
+    # get the device name
+    dev=$(iface_get_devname $iface)
+    #echo removing routes provided by $dev
+    
+    # figure out routes, first from manual config, then from nm info
+    v=${iface}_routes
+    routes=$(echo ${!v} | tr ',' ' ')
+    [ -z "$routes" ] && routes=$(iface_get_routes $iface)
+    if [ -z "$routes" ]; then
+        return
+    fi
+
+    #echo $routes
+    r=($(echo $routes | tr ',' '\n'))
+    for ((i=0; i<${#r[@]}; i+=2)); do
+        #echo ip route show ${r[i]} via ${r[i+1]} dev $dev
+        if [ -n "$(ip route show ${r[i]} via ${r[i+1]} dev $dev)" ]; then
+            go="ip route del ${r[i]} via ${r[i+1]} dev $dev"
+            #echo $(timestamp): $go
+            eval $go
+        fi
+    done
+}
+
+
 remove_all_managed_routes()
 {
+    # make sure this only removes things a single time
     [ -n "$NO_MORE_REMOVING" ] && return
     local iface
     local dev
@@ -115,25 +153,16 @@ remove_all_managed_routes()
     local i
     local go
     for iface in $*; do
-        # get the device name
-        dev=$(iface_get_devname $iface)
+        iface_remove_routes $iface
         
-        # figure out routes, first from manual config, then from nm info
-        v=${iface}_routes
-        routes=$(echo ${!v} | tr ',' ' ')
-        [ -z "$routes" ] && routes=$(iface_get_routes $iface)
-        if [ -z "$routes" ]; then
-            continue
+        # check for dependent ifaces
+        v=${iface}_deps
+        deps=${!v}
+        if [ -n "$deps" ]; then
+            #echo "deps: $deps"
+            remove_all_managed_routes $deps
         fi
 
-        r=($(echo $routes | tr ',' '\n'))
-        for ((i=0; i<${#r[@]}; i+=2)); do
-            if [ -z "$(ip route show ${r[i]} via ${r[i+1]} dev $dev)" ]; then
-                go="ip route del ${r[i]} via ${r[i+1]} dev $dev"
-                echo $(timestamp): $go
-                eval $go
-            fi
-        done
     done
     export NO_MORE_REMOVING=y
 }
