@@ -17,14 +17,66 @@
 # parse our config
 [ -f $0.conf ] && . $0.conf
 
-
 log=$0.log
 lock=$0.lock
-stamp=$(date +"%Y-%m-%dT%H-%M-%S")
 
-# redirect all output to the logfile
-exec 1>>$log
-exec 2>&1
+
+usage()
+{
+    echo "usage: $(basename $0) [--help] [--verbose] [--dry-run] [--stdout]"
+    echo
+    echo "By default, output is appended to $log and is silent unless"
+    echo "something changes."
+}
+
+
+opt_dryrun=
+opt_verbose=
+opt_stdout=
+while [ $# -gt 0 ] ; do
+    case $1 in
+        --help)
+            usage
+            exit 0
+            ;;
+        -v|--verbose)
+            opt_verbose=1
+            ;;
+        -n|--dry-run)
+            opt_dryrun=1
+            ;;
+        --stdout)
+            opt_stdout=1
+            ;;
+        *)
+            echo "Unknown option or parameter \"$1\""
+            echo
+            usage
+            exit 1
+            ;;
+    esac
+
+    shift
+done
+
+
+
+# debug echo - only prints if enabled
+decho()
+{
+    if [ -n "$opt_verbose" ]; then
+        echo "$*"
+    fi
+}
+
+
+# dry-run eval - evals unless dry-run specified
+deval()
+{
+    if [ -z "$opt_dryrun" ]; then
+        eval $*
+    fi
+}
 
 
 iface_get_routes()
@@ -118,7 +170,7 @@ iface_remove_routes()
 
     # get the device name
     dev=$(iface_get_devname $iface)
-    #echo removing routes provided by $dev
+    decho "looking up routes provided by $iface ($dev)"
     
     # figure out routes, first from manual config, then from nm info
     v=${iface}_routes
@@ -128,14 +180,14 @@ iface_remove_routes()
         return
     fi
 
-    #echo $routes
+    decho $routes
     r=($(echo $routes | tr ',' '\n'))
     for ((i=0; i<${#r[@]}; i+=2)); do
-        #echo ip route show ${r[i]} via ${r[i+1]} dev $dev
+        #decho ip route show ${r[i]} via ${r[i+1]} dev $dev
         if [ -n "$(ip route show ${r[i]} via ${r[i+1]} dev $dev)" ]; then
             go="ip route del ${r[i]} via ${r[i+1]} dev $dev"
-            #echo $(timestamp): $go
-            eval $go
+            echo $(timestamp): $go
+            deval $go
         fi
     done
 }
@@ -159,7 +211,7 @@ remove_all_managed_routes()
         v=${iface}_deps
         deps=${!v}
         if [ -n "$deps" ]; then
-            #echo "deps: $deps"
+            decho "$iface deps: $deps"
             remove_all_managed_routes $deps
         fi
 
@@ -171,17 +223,17 @@ remove_all_managed_routes()
 check_ifaces()
 {
     for iface in $*; do
-        #echo iface: $iface
+        decho checking iface: $iface
         
         # check iface state, skip if down
         if [ "$(iface_get_state $iface)" != "activated" ]; then
-            #echo "skipping inactive interface"
+            decho "skipping inactive interface"
             continue
         fi
 
         # get the device name
         dev=$(iface_get_devname $iface)
-        #echo dev: $dev
+        decho dev: $dev
         
         # figure out routes, first from manual config, then from nm info
         v=${iface}_routes
@@ -190,8 +242,8 @@ check_ifaces()
         if [ -z "$routes" ]; then
             echo "WARNING: no routes for $iface"
             continue
-        #else
-        #    echo "routes: $routes"
+        else
+            decho "routes: $routes"
         fi
         
         # FIXME: What to do if there's more than one route... they should be listed
@@ -208,7 +260,7 @@ check_ifaces()
         #        routes
         #
         r=($(echo $routes | tr ',' '\n'))
-        #echo checking ${r[1]}
+        decho checking ${r[1]}
 
         if ip_is_reachable ${r[1]}; then
             # check if the route is already there
@@ -217,7 +269,7 @@ check_ifaces()
             #       output of this script to be silent if nothing needed to be
             #       changed.
             #
-            #echo "interface $iface is up, adding it's routes"
+            decho "interface $iface is up, processing routes"
             for ((i=0; i<${#r[@]}; i+=2)); do
                 #echo ip route show ${r[i]} via ${r[i+1]} dev $dev
                 #blarg=$(ip route show ${r[i]} via ${r[i+1]} dev $dev)
@@ -228,7 +280,7 @@ check_ifaces()
                     remove_all_managed_routes $*
                     go="ip route add ${r[i]} via ${r[i+1]} dev $dev"
                     echo $(timestamp): $go
-                    eval $go
+                    deval $go
                 fi
             done
 
@@ -236,17 +288,37 @@ check_ifaces()
             v=${iface}_deps
             deps=${!v}
             if [ -n "$deps" ]; then
-                #echo "deps: $deps"
+                decho "$iface deps: $deps"
                 check_ifaces $deps
             fi
 
             break
+        else
+            decho "interface $iface not reachable"
         fi
     done
 }
 
 
-touch $lock
+
+
+
+
+
+# redirect all output to the logfile
+if [ -z "$opt_stdout" ]; then
+    exec 1>>$log
+    exec 2>&1
+fi
+
+go="touch $lock"
+decho $go
+deval $go
+
 check_ifaces $iface_list
-rm -f $lock
+
+go="rm -f $lock"
+decho $go
+deval $go
+
 exit 0
