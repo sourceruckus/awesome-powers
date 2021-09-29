@@ -1,1 +1,2 @@
-These are EXAMPLE config files... some require site-specific tuning.
+These are EXAMPLE config files and require some site-specific tuning
+(e.g., change cron schedules, insert private keys).
