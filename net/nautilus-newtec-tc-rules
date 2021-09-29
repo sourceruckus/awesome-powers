@@ -34,6 +34,9 @@
 # voip:  131.128.101.42 udp 22
 # vlink: 131.128.101.43 udp 22
 #
+# I could also just prioritize everything coming over the vlan4 tunnel, which
+# should only be important stuff anyways.
+#
 # video - originates on vlan96, goes out vlan95 to URI if available, otherwise
 # goes out normal WAN interface.  i can mark vlan96 packates in iptables.
 #

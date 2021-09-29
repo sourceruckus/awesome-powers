@@ -12,37 +12,30 @@
 #
 ### higher priority stuff
 #
-# voip - originates on vlan2095, then gets tunneled through vlan4, which
-# eventualy sends the packets out whatever WAN interface is my gateway.  so,
-# how can we classify that traffic once it's in the queue for vlan3, for
-# example?  i can mark packets that originate from vlan2095 in iptables... but
-# will I be able to see that once the packets are encapsulated by the
-# voip-tunnel device?
-#
-# hmm... instead of vlan tags, we can match on ip address/netmask... except
-# it's going to be after NAT happens... so we would have to fwmark in iptables
-# all the traffic coming from vlan2095, then match on the mark in the tc
-# filter.  i think the fwmark will remain, even after all the voip-tunnel
-# shenanigans... will have to test it.
-#
-# could also try and identify voip via the destination address and/or port...
-#
-# video - originates on vlan96, goes out vlan95 to URI if available, otherwise
-# goes out normal WAN interface.  i can mark vlan96 packates in iptables.
-#
-# again, could try to identify destination address and/or port...
+# Traffic coming from vlan4 (voip tunnel) and vlan96 (encoders) is marked as
+# HIGH priority by iptables.
 #
 ### lower priority stuff
 #
-# anything coming from vlan100.  the unifi manager can limit the wifi for us,
-# but we should further limit it w/ tc rules
-#
-# any other traffic we can identify and mark in iptables
+# Traffic coming from vlan100 (public) is marked as LOW priority by iptables.
+# The unifi manager is also used to limit the wifi for us.
 #
 ### middle tier
 #
-# anything else
+# Everything else.  This includes normal operational stuff on the instrument
+# and data networks, as well as Interactions/Outreach and occasional giant
+# google drive uploads.
 #
+
+# FIXME: Video/Voip is more important than outreach (i.e., NautilusLive video
+#        won't stop if we run out of bandwidth during an Interaction), and
+#        outreach is more important than Joe Sailor doing a video call when he
+#        shouldn't be.  That makes sense... but what about giant google drive
+#        uploads from data network or production macs?  Those could starve an
+#        Interaction of bandwidth... should we try and classify those as low
+#        priority?  We could accomplish that by telling staff to only do giant
+#        uploads from public network...  have to work through the actual
+#        workflow for this.
 
 export DEV=eth0.95
 # FIXME: If this is being used for vlan95 while we're using the newtec modems,
@@ -50,13 +43,13 @@ export DEV=eth0.95
 #        really we split it accross two vlan interfaces.  Vlan3 is for basic
 #        internet traffic, and vlan95 is for video back to URI.
 #
-#export UP_MB=13
-#export DOWN_MB=9
+export UP_MB=13
+export DOWN_MB=9
 #
 # NOTE: The newtec's give us 20 mbit up/down, but we split it between vlan95
 #       and vlan3.  Combined, they cannot exceed 20.  Keep them in sync!
 #
-export UP_MB=10
-export DOWN_MB=2
+#export UP_MB=10
+#export DOWN_MB=2
 
 exec $(dirname $0)/tc-rules $*

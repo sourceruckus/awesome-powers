@@ -130,7 +130,8 @@ tc filter add dev ${DEV} parent 1: protocol ip prio 13 u32 \
    match u8 0x10 0xff at 33 \
    flowid 1:10
 
-# Anything "marked" as "10" by iptables goes into the HIGH priority class
+# Anything "marked" as "10" by iptables goes into the HIGH priority class (see
+# /etc/iptables/rules.v4).
 tc filter add dev $DEV protocol ip parent 1: prio 1 handle 10 fw flowid 1:10
 
 # filter by destination port
@@ -165,7 +166,8 @@ done
 
 # And now doom specified low priority stuff to the LOW priority class
 #
-# Anything "marked" as "30" by iptables goes into the LOW priority class
+# Anything "marked" as "30" by iptables goes into the LOW priority class (see
+# /etc/iptables/rules.v4).
 tc filter add dev $DEV protocol ip parent 1: prio 1 handle 30 fw flowid 1:30
 
 # filter by destination port
