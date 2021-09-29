@@ -1,0 +1,40 @@
+#!/bin/bash
+#
+# Awesome Powers - scripts & config files of pure awesomeness
+#
+# Copyright 2018-2021 Michael D Labriola <michael.d.labriola@gmail.com>
+#
+# Licensed under the GPLv3. See the file COPYING for details. 
+#
+# Populate a dir with symlinks to files in a template dir
+#
+
+
+usage()
+{
+    echo "usage: $(basename $0) TEMPLATEDIR TARGETDIR"
+}
+
+
+if [ $# != 2 ]; then
+    echo "ERROR: invalid usage"
+    echo
+    usage
+    exit 1
+fi
+if [ ! -d $1 ]; then
+    echo "ERROR: TEMPLATEDIR doesn't exist"
+    echo
+    usage
+    exit 1
+fi
+
+echo "populating symlink forest in $2 using $1 as template"
+
+export src=$(realpath $1)
+export dst=$(realpath $2)
+
+pushd $src >/dev/null || exit 1
+
+find . -type d -exec mkdir -pv $dst/{} \; \
+     -o -type f -exec bash -c 'ln -fvs $(realpath --relative-to=$(dirname $dst/{}) $src/{}) $dst/{}' \;
