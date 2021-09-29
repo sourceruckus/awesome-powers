@@ -37,4 +37,4 @@ export dst=$(realpath $2)
 pushd $src >/dev/null || exit 1
 
 find . -type d -exec mkdir -pv $dst/{} \; \
-     -o -type f -exec bash -c 'ln -fvs $(realpath --relative-to=$(dirname $dst/{}) $src/{}) $dst/{}' \;
+     -o -exec bash -c 'ln -fvs $(realpath --relative-to=$(dirname $dst/{}) $src/{}) $dst/{}' \;
