@@ -10,31 +10,135 @@
 #
 
 
-usage()
+# debug echo - only prints if enabled
+decho()
 {
-    echo "usage: $(basename $0) TEMPLATEDIR TARGETDIR"
+    if [ -n "$opt_verbose" ]; then
+        echo "$*"
+    fi
 }
 
 
-if [ $# != 2 ]; then
-    echo "ERROR: invalid usage"
+# dry-run eval - evals unless dry-run specified
+deval()
+{
+    if [ -z "$opt_dryrun" ]; then
+        eval $*
+    fi
+}
+
+
+usage()
+{
+    if [ -n "$*" ]; then
+        echo ERROR: $*
+        echo
+    fi
+    echo "usage: $(basename $0) [OPTIONS] TEMPLATEDIR TARGETDIR"
+    echo
+    echo "  -n, --dry-run         Just print what would happen."
+    echo
+    echo "  -v, --verbose         More descriptive output."
+    echo
+    echo"   -b, --backup          Create backups of existing files."
+}
+
+
+# call getopt
+#
+# NOTE: This handles spacing out arguments correctly for the case statement
+#       below and checks for unknown flags.  Required flags are checked for
+#       below.
+#
+# NOTE: The set -- command causes the resulting output of getopt to replace the
+#       current positional arguments (e.g, $1, $2).
+#
+__opts=$(getopt -un $(basename $0) \
+    -o hnvb \
+    --long help,dry-run,verbose,backup -- $@)
+if [ $? != 0 ]; then
     echo
     usage
+    exit 1
+fi
+set -- $__opts
+
+# defaults
+opt_dryrun=
+opt_verbose=
+opt_backup=
+
+# parse the new positional arguments
+while true; do
+    case "$1" in
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        -v|--verbose)
+            opt_verbose=1
+            shift
+            ;;
+        -n|--dry-run)
+            opt_dryrun=1
+            shift
+            ;;
+        -b|--backup)
+            opt_backup=1
+            shift
+            ;;
+	--)
+            # done parsing
+            shift
+            break
+            ;;
+	*)
+            usage
+            exit 1
+            ;;
+    esac
+done
+
+# check for required options
+if [ $# != 2 ]; then
+    usage "invalid usage"
     exit 1
 fi
 if [ ! -d $1 ]; then
-    echo "ERROR: TEMPLATEDIR doesn't exist"
-    echo
-    usage
+    usage "TEMPLATEDIR doesn't exist"
     exit 1
 fi
 
-echo "populating symlink forest in $2 using $1 as template"
+src=$(realpath $1)
+dst=$(realpath $2)
 
-export src=$(realpath $1)
-export dst=$(realpath $2)
+decho opt_dryrun: $opt_dryrun
+decho opt_verbose: $opt_verbose
+decho opt_backup: $opt_backup
+decho src: $src
+decho dst: $dst
+
+echo "populating symlink forest in $2 using $1 as template"
 
 pushd $src >/dev/null || exit 1
 
-find . -type d -exec mkdir -pv $dst/{} \; \
-     -o -exec bash -c 'ln -fvs $(realpath --relative-to=$(dirname $dst/{}) $src/{}) $dst/{}' \;
+if [ -n "$opt_dryrun" ]; then
+    mkdir="echo mkdir"
+    ln="echo ln"
+    realpath="echo realpath"
+else
+    mkdir="mkdir"
+    ln="ln"
+    realpath="realpath"
+fi
+if [ -n "$opt_verbose" ]; then
+    mkdir+=" -v"
+    ln+=" -v"
+fi
+if [ -n "$opt_backup" ]; then
+    ln+=" bS .orig"
+fi
+
+export ln src dst realpath
+find . -type d -exec $mkdir -p $dst/{} \; \
+     -o -exec bash -c '$ln -fs $($realpath --relative-to=$(dirname $dst/{}) $src/{}) $dst/{}' \;
