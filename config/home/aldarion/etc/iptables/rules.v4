@@ -20,6 +20,8 @@ COMMIT
 
 # masquerade all outbound traffic on our wifi interface
 -A POSTROUTING -o wlp2s0 -j MASQUERADE
+-A POSTROUTING -o wg-cah1 -j MASQUERADE
+-A POSTROUTING -o wg-cah2 -j MASQUERADE
 
 COMMIT
 # Completed on Fri Jan 24 23:18:05 2020
@@ -69,7 +71,7 @@ COMMIT
 #
 # let any wireguard traffic in on the port we're using
 #
--A INPUT -i wlp2s0 -p udp --dport 51820 -j ACCEPT
+#-A INPUT -i wlp2s0 -p udp --dport 51820 -j ACCEPT
 
 
 # SSH policy
