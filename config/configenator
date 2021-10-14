@@ -1,0 +1,147 @@
+#!/bin/bash
+#
+# Awesome Powers - scripts & config files of pure awesomeness
+#
+# Copyright 2018-2021 Michael D Labriola <michael.d.labriola@gmail.com>
+#
+# Licensed under the GPLv3. See the file COPYING for details. 
+#
+# Wraps around plant-symlinks to install symlinks to controlled files onto the
+# rootfs of the specified host.
+#
+
+
+# debug echo - only prints if enabled
+decho()
+{
+    if [ -n "$opt_verbose" ]; then
+        echo "$*"
+    fi
+}
+
+
+# dry-run eval - evals unless dry-run specified
+deval()
+{
+    if [ -z "$opt_dryrun" ]; then
+        eval $*
+    fi
+}
+
+
+usage()
+{
+    if [ -n "$*" ]; then
+        echo ERROR: $*
+        echo
+    fi
+    echo "usage: $(basename $0) [OPTIONS]"
+    echo
+    echo "  -h, --help            Display this help mesage."
+    echo
+    echo "  -n, --dry-run         Just print what would happen."
+    echo
+    echo "  -v, --verbose         More descriptive output."
+    echo
+    echo "  -H, --host HOSTNAME   Use alternate system hostname."
+    echo
+    echo "  -r, --root ROOTDIR    Use alternate root dir for installed files."
+}
+
+
+# call getopt
+#
+# NOTE: This handles spacing out arguments correctly for the case statement
+#       below and checks for unknown flags.  Required flags are checked for
+#       below.
+#
+# NOTE: The set -- command causes the resulting output of getopt to replace the
+#       current positional arguments (e.g, $1, $2).
+#
+__opts=$(getopt -un $(basename $0) \
+    -o hnvH:r: \
+    --long help,dry-run,verbose,host:root: -- $@)
+if [ $? != 0 ]; then
+    echo
+    usage
+    exit 1
+fi
+set -- $__opts
+
+# defaults
+opt_dryrun=
+opt_verbose=
+opt_host=$HOSTNAME
+opt_root=/
+
+# parse the new positional arguments
+while true; do
+    case "$1" in
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        -v|--verbose)
+            opt_verbose="--verbose"
+            shift
+            ;;
+        -n|--dry-run)
+            opt_dryrun="--dry-run"
+            shift
+            ;;
+        -b|--backup)
+            opt_backup=1
+            shift
+            ;;
+        -H|--host)
+            opt_host=$2
+            shift 2
+            ;;
+        -r|--root)
+            opt_root=$2
+            shift 2
+            ;;
+	--)
+            # done parsing
+            shift
+            break
+            ;;
+	*)
+            usage
+            exit 1
+            ;;
+    esac
+done
+
+# check for required options
+if [ $# != 0 ]; then
+    usage "invalid usage"
+    exit 1
+fi
+
+# double-check that we can find a unique template dir based on provided
+# hostname
+template=*/$opt_host
+if [ "$(echo $template | wc -w)" != "1" ]; then
+    usage "HOSTNAME must be unique"
+    exit 1
+fi
+if [ ! -d $template ]; then
+    usage "no template found for host $opt_host"
+    exit 1
+fi
+
+src=$(realpath $template)
+dst=$(realpath $opt_root)
+
+decho opt_dryrun: $opt_dryrun
+decho opt_verbose: $opt_verbose
+decho opt_root: $opt_root
+decho src: $src
+decho dst: $dst
+
+go="$(dirname $0)/plant-symlinks $opt_dryrun $opt_verbose --backup $src $dst"
+decho $go
+deval $go
+
+exit 0
