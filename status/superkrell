@@ -14,11 +14,12 @@ nodes_dom0="frodo sam merry gandalf"
 nodes_srv="srv-files srv-net srv-auth srv-www srv-router1 srv-router2"
 nodes_dev="aragorn legolas gimli boromir"
 nodes_home="gandalf elrond galadriel glorfindel"
+nodes_nautilus="coresrv1 coresrv2 netsrv1 netsrv2 netsrv3 shiphouse nautilusfs capture rovnav argusgui hercgui copynuc rrnuc logger datalabfour datalabfive"
 
 
 usage()
 {
-    echo "usage: $(basename $0) [default|dom0|srv|dev|home]"
+    echo "usage: $(basename $0) [default|dom0|srv|dev|home|nautilus]"
 }
 
 
@@ -36,6 +37,9 @@ while (($#)); do
             ;;
         home)
             nodes+=" $nodes_home"
+            ;;
+        nautilus)
+            nodes+=" $nodes_nautilus"
             ;;
         default)
             nodes+=" $nodes_default"
@@ -65,30 +69,3 @@ done
 
 
 exit 0
-
-
-#
-# old script from 2019 Nautilus season
-#
-
-data_nodes="shiphouse nautilusfs datalabfour camproc de-nuc"
-inst_nodes="cam-acq-dev capture rovnav cam-acq1 argusgui hercgui"
-
-# 1st, local gkrellm
-go="gkrellm &!"
-echo $go
-eval $go
-
-# now data_nodes, which we can reach directly
-for x in $data_nodes; do
-    go="gkrellm -s $x &!"
-    echo $go
-    eval $go
-done
-
-# and now inst_nodes, which we need to launch remotely via shiphouse
-for x in $inst_nodes; do
-    go="ssh -X michael@shiphouse gkrellm -s $x &!"
-    echo $go
-    eval $go
-done
