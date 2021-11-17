@@ -13,6 +13,22 @@
 # NOTE: All output appended to logfile, which is then mailed and removed each
 #       night (log rotation and mailing is not this script's responsibility).
 #
+# FIXME: Add --mailto support, so I can get email whenever check-gateway
+#        changes anything.  Would be best if this was set in the config file
+#        and also settable via command line so that a default email address (or
+#        addresses) can get email whenever anyone invokes check-gateway and it
+#        actually changes things (i.e., not --dry-run and usable gateways have
+#        changed).
+#
+# FIXME: Add outside-the-gateway checking.  In other words, make sure we can
+#        ping a host OUTSIDE the gateway before we assume it's a usable
+#        gateway.  Currently, we only ping the gateway itself.  Could try
+#        Google Public DNS servers 8.8.8.8 and 8.8.4.4 and the Cloudflare DNS
+#        servers 1.1.1.1 and 1.0.0.1 and treat the gateway as usuable if we get
+#        ANY responses.
+#
+# FIXME: Raise interface during testing... nmcli con up
+#
 
 # parse our config
 [ -f $0.conf ] && . $0.conf
@@ -226,6 +242,14 @@ check_ifaces()
         decho checking iface: $iface
         
         # check iface state, skip if down
+        #
+        # FIXME: good idea originally, but if our connection goes down (e.g.,
+        #        the 4gmodem I ues does this when "carrier-changed" happens,
+        #        and it's kinda frequent), we need to re-raise it.
+        #
+        #        this means, any interface listed WILL get raised, so make sure
+        #        to remove dead interfaces that shouldn't be auto-raised.
+        #
         if [ "$(iface_get_state $iface)" != "activated" ]; then
             decho "skipping inactive interface"
             continue
