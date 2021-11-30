@@ -69,6 +69,12 @@ COMMIT
 -A PREROUTING -m mac --mac-source 80:5e:0c:07:21:d8 -j MARK --set-mark 10
 # phone-wireless-base
 -A PREROUTING -m mac --mac-source 80:5e:0c:13:e8:f2 -j MARK --set-mark 10
+# inventory3 (for testing)
+#-A PREROUTING -m mac --mac-source 34:17:eb:b4:33:18 -j MARK --set-mark 10
+
+
+# mark traffic coming from low priority vlans
+-A PREROUTING -i eth0.10 -j MARK --set-mark 30
 
 
 COMMIT
