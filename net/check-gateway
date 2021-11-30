@@ -168,7 +168,7 @@ iface_get_devname()
 
 ip_is_reachable()
 {
-    ping -w1 $1 >/dev/null 2>&1
+    ping -w1 -c1 $1 >/dev/null 2>&1
 }
 
 
