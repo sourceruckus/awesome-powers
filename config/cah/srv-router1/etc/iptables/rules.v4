@@ -246,12 +246,18 @@ COMMIT
 -A FORWARD -i eth0.30 -o eth0.3 -j ACCEPT
 -A FORWARD -i eth0.30 -o eth0.20 -j ACCEPT
 -A FORWARD -i eth0.30 -o wg-cah -j ACCEPT
+# allow workstations to get to instrument network - this will be further
+# controlled by the rules for the instrument network, as traffic will really
+# only work if both directions are allowed.
+-A FORWARD -i eth0.30 -o eth0.40 -j ACCEPT
 #
 # instrument.cah can only to to internet and infrastructure.cah (CONFIRMED)
 -A FORWARD -i eth0.40 -o eth0.2 -j ACCEPT
 -A FORWARD -i eth0.40 -o eth0.3 -j ACCEPT
 -A FORWARD -i eth0.40 -o eth0.20 -j ACCEPT
 -A FORWARD -i eth0.40 -o wg-cah -j ACCEPT
+# allow frontdesk-printer's wifi interface onto the workstation network
+-A FORWARD -i eth0.40 -o eth0.30 -m mac --mac-source 44:1c:a8:85:3e:fa -j ACCEPT
 #
 # allow wireguard interface to forward everywhere
 -A FORWARD -i wg-cah -j ACCEPT
