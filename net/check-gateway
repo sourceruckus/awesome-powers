@@ -156,7 +156,13 @@ iface_get_state()
 
 iface_get_devname()
 {
-    nmcli con show $1 |awk '/^GENERAL.IP-IFACE/ {print $NF}'
+    # FIXME: I originally was using GENERAL.IP-IFACE here, which sounds more
+    #        likely to always be correct than GENERAL.DEVICES... but it looks
+    #        like Ubuntu 18.04's version of NetworkManager doesn't expose
+    #        IP-IFACE.  Eventually switch over, or maybe use IP-IFACE if
+    #        non-empty otherwise DEVICES?
+    #
+    nmcli con show $1 |awk '/^GENERAL.DEVICES/ {print $NF}'
 }
 
 
