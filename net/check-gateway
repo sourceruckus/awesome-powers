@@ -27,8 +27,6 @@
 #        servers 1.1.1.1 and 1.0.0.1 and treat the gateway as usuable if we get
 #        ANY responses.
 #
-# FIXME: Raise interface during testing... nmcli con up
-#
 
 # parse our config
 [ -f $0.conf ] && . $0.conf
@@ -247,18 +245,24 @@ check_ifaces()
     for iface in $*; do
         decho checking iface: $iface
         
-        # check iface state, skip if down
+        # check iface state, raise if needed
         #
-        # FIXME: good idea originally, but if our connection goes down (e.g.,
-        #        the 4gmodem I ues does this when "carrier-changed" happens,
-        #        and it's kinda frequent), we need to re-raise it.
+        # NOTE: We originally skipped lowered interfaces, but if our connection
+        #       goes down (e.g., the 4gmodem I ese does this when
+        #       "carrier-changed" happens, and it's kinda frequent), we need to
+        #       re-raise it.
         #
-        #        this means, any interface listed WILL get raised, so make sure
-        #        to remove dead interfaces that shouldn't be auto-raised.
+        #       This means, any interface listed WILL get raised, so make sure
+        #       to remove dead interfaces that shouldn't be auto-raised.
         #
         if [ "$(iface_get_state $iface)" != "activated" ]; then
-            decho "skipping inactive interface"
-            continue
+            if [ -n "$opt_dryrun" ]; then
+                decho "skipping inactive interface during --dry-run"
+                continue
+            else
+                decho "raising inactive interface"
+                nmcli con up $iface
+            fi
         fi
 
         # get the device name
