@@ -170,6 +170,24 @@ ip_is_reachable()
 }
 
 
+# check to see if ip is a good gateway candidate.  pingenator will temporarily
+# use the ip as a gateway to ping a couple hosts to see if it REALLY works.
+ip_is_good_gw()
+{
+    # FIXME: Should we include pingenator as a submodule of awesome-powers?  If
+    #        so, should we use it by default here, add use_pingenator_sumbod
+    #        and/or use_pingenator_path or something like that to config file?
+    go="pingenator -g $1 --dns"
+    for x in "$pingenator_excludes"; do
+        go+=" --exclude $x"
+    done
+    decho $go
+    # FIXME: Should we call pingenator if --dry-run?  It could cause
+    #        problems, so I'm gonna go with "no".  For now.
+    deval $go
+}
+
+
 timestamp()
 {
     date -Iseconds
@@ -296,40 +314,51 @@ check_ifaces()
         r=($(echo $routes | tr ',' '\n'))
         decho checking ${r[1]}
 
-        if ip_is_reachable ${r[1]}; then
-            # check if the route is already there
-            #
-            # NOTE: it doesn't hurt to add it a second time, but we want the
-            #       output of this script to be silent if nothing needed to be
-            #       changed.
-            #
-            decho "interface $iface is up, processing routes"
-            for ((i=0; i<${#r[@]}; i+=2)); do
-                #echo ip route show ${r[i]} via ${r[i+1]} dev $dev
-                #blarg=$(ip route show ${r[i]} via ${r[i+1]} dev $dev)
-                #echo blarg: $blarg
-                if [ -z "$(ip route show ${r[i]} via ${r[i+1]} dev $dev)" ]; then
-                    # we're really modifying the routing table, clear out all
-                    # managed routes first
-                    remove_all_managed_routes $*
-                    go="ip route add ${r[i]} via ${r[i+1]} dev $dev"
-                    echo $(timestamp): $go
-                    deval $go
-                fi
-            done
-
-            # check for dependent ifaces
-            v=${iface}_deps
-            deps=${!v}
-            if [ -n "$deps" ]; then
-                decho "$iface deps: $deps"
-                check_ifaces $deps
-            fi
-
-            break
-        else
-            decho "interface $iface not reachable"
+        # skip if not reachable
+        if ! ip_is_reachable ${r[1]}; then
+            decho "interface $iface not reachable, skipping"
+            continue
         fi
+
+        # skip if not actually a usable gateway
+        if ! ip_is_good_gw ${r[1]}; then
+            decho "interface $iface not a good gateway, skipping"
+            continue
+        fi
+
+        # Ok, we've got a winner!
+        
+        # check if the route is already there
+        #
+        # NOTE: it doesn't hurt to add it a second time, but we want the
+        #       output of this script to be silent if nothing needed to be
+        #       changed.
+        #
+        decho "interface $iface is a usable gateway, processing routes"
+        for ((i=0; i<${#r[@]}; i+=2)); do
+            #echo ip route show ${r[i]} via ${r[i+1]} dev $dev
+            #blarg=$(ip route show ${r[i]} via ${r[i+1]} dev $dev)
+            #echo blarg: $blarg
+            if [ -z "$(ip route show ${r[i]} via ${r[i+1]} dev $dev)" ]; then
+                # we're really modifying the routing table, clear out all
+                # managed routes first
+                remove_all_managed_routes $*
+                go="ip route add ${r[i]} via ${r[i+1]} dev $dev"
+                echo $(timestamp): $go
+                deval $go
+            fi
+        done
+
+        # check for dependent ifaces
+        v=${iface}_deps
+        deps=${!v}
+        if [ -n "$deps" ]; then
+            decho "$iface deps: $deps"
+            check_ifaces $deps
+        fi
+
+        break
+
     done
 }
 
