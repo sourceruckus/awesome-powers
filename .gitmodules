@@ -1,0 +1,3 @@
+[submodule "subprojects/pingenator"]
+	path = subprojects/pingenator
+	url = https://github.com/sourceruckus/pingenator
