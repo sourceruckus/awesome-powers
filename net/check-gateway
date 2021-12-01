@@ -20,13 +20,6 @@
 #        actually changes things (i.e., not --dry-run and usable gateways have
 #        changed).
 #
-# FIXME: Add outside-the-gateway checking.  In other words, make sure we can
-#        ping a host OUTSIDE the gateway before we assume it's a usable
-#        gateway.  Currently, we only ping the gateway itself.  Could try
-#        Google Public DNS servers 8.8.8.8 and 8.8.4.4 and the Cloudflare DNS
-#        servers 1.1.1.1 and 1.0.0.1 and treat the gateway as usuable if we get
-#        ANY responses.
-#
 
 # parse our config
 [ -f $0.conf ] && . $0.conf
@@ -177,7 +170,15 @@ ip_is_good_gw()
     # FIXME: Should we include pingenator as a submodule of awesome-powers?  If
     #        so, should we use it by default here, add use_pingenator_sumbod
     #        and/or use_pingenator_path or something like that to config file?
-    go="pingenator -g $1 --dns"
+    #
+    #        I'm going with yes, add it as submodule.  And yes, use it
+    #        explicitly based on our checkout location.  If that becomes
+    #        undesirable later, we'll add --use-system-pingenator or something
+    #        like that.  Probably best to add pingenator_path to conf and use
+    #        that if set, or just assume it's in $PATH if that variable is set
+    #        to "PATH".  or something.
+    #
+    go="$pingenator -g $1 --dns"
     for x in "$pingenator_excludes"; do
         go+=" --exclude $x"
     done
@@ -373,6 +374,15 @@ if [ -z "$opt_stdout" ]; then
     exec 1>>$log
     exec 2>&1
 fi
+
+# figure out path to pingenator
+pingenator=$(dirname $0)/../subprojects/pingenator/src/pingenator
+if [ ! -f $pingenator ]; then
+    echo "ERROR: $pingenator not found"
+    exit 1
+fi
+pingenator=$(realpath $pingenator)
+decho "pingenator: $pingenator"
 
 go="touch $lock"
 decho $go
