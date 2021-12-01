@@ -173,7 +173,7 @@ ip_is_good_gw()
     #        to "PATH".  or something.
     #
     go="$pingenator -g $1 --dns"
-    for x in "$pingenator_excludes"; do
+    for x in $pingenator_excludes; do
         go+=" --exclude $x"
     done
     decho $go
