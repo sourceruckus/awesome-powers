@@ -21,12 +21,6 @@
 #        changed).
 #
 
-# parse our config
-[ -f $0.conf ] && . $0.conf
-
-log=$0.log
-lock=$0.lock
-
 
 usage()
 {
@@ -369,11 +363,29 @@ check_ifaces()
 
 
 
+log=$0.log
+lock=$0.lock
+
 # redirect all output to the logfile
 if [ -z "$opt_stdout" ]; then
     exec 1>>$log
     exec 2>&1
 fi
+
+# parse our config
+if [ -f $0.conf ]; then
+    . $0.conf
+else
+    echo "ERROR: missing config file $0.conf"
+    exit 1
+fi
+
+# quick sanity check
+if [ -z "$iface_list" ]; then
+    echo "ERROR: iface_list not set"
+    exit 1
+fi
+decho "iface_list: $iface_list"
 
 # figure out path to pingenator
 pingenator=$(dirname $0)/../subprojects/pingenator/src/pingenator
@@ -384,6 +396,11 @@ fi
 pingenator=$(realpath $pingenator)
 decho "pingenator: $pingenator"
 
+# lock the lockfile!
+#
+# NOTE: This means if anything fails after this, we need to decide if we're
+#       going to remove the lockfile when things go wrong.
+#
 go="touch $lock"
 decho $go
 deval $go
