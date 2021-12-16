@@ -12,10 +12,13 @@
 #
 ### higher priority stuff
 #
-# voip - not currently on it's own vlan, but planning to switch that as soon as
-# possible.  once i have, i can mark packets via iptables very easily.
+# voip - Not currently on it's own vlan, but planning to switch that as soon as
+# possible.  once I have, I can mark packets via iptables very easily.  It
+# looks like our phones are using DSCP: AF31, TOS: 0x68 (104 decimal), so I
+# guess we could pick that traffic out.  For now, though, I've marked all
+# traffic from our phones' MACs as high priority.
 #
-# dicom - not nearly as important as the voip, but we could consider
+# dicom - Not nearly as important as the voip, but we could consider
 # identifying dicom traffic going from the ultrasound machine or digital xray
 # machine(s)...
 #

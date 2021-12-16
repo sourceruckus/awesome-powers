@@ -20,21 +20,6 @@
 #        actually changes things (i.e., not --dry-run and usable gateways have
 #        changed).
 #
-# FIXME: Add outside-the-gateway checking.  In other words, make sure we can
-#        ping a host OUTSIDE the gateway before we assume it's a usable
-#        gateway.  Currently, we only ping the gateway itself.  Could try
-#        Google Public DNS servers 8.8.8.8 and 8.8.4.4 and the Cloudflare DNS
-#        servers 1.1.1.1 and 1.0.0.1 and treat the gateway as usuable if we get
-#        ANY responses.
-#
-# FIXME: Raise interface during testing... nmcli con up
-#
-
-# parse our config
-[ -f $0.conf ] && . $0.conf
-
-log=$0.log
-lock=$0.lock
 
 
 usage()
@@ -156,13 +141,45 @@ iface_get_state()
 
 iface_get_devname()
 {
-    nmcli con show $1 |awk '/^GENERAL.IP-IFACE/ {print $NF}'
+    # FIXME: I originally was using GENERAL.IP-IFACE here, which sounds more
+    #        likely to always be correct than GENERAL.DEVICES... but it looks
+    #        like Ubuntu 18.04's version of NetworkManager doesn't expose
+    #        IP-IFACE.  Eventually switch over, or maybe use IP-IFACE if
+    #        non-empty otherwise DEVICES?
+    #
+    nmcli con show $1 |awk '/^GENERAL.DEVICES/ {print $NF}'
 }
 
 
 ip_is_reachable()
 {
-    ping -w1 $1 >/dev/null 2>&1
+    ping -w1 -c1 $1 >/dev/null 2>&1
+}
+
+
+# check to see if ip is a good gateway candidate.  pingenator will temporarily
+# use the ip as a gateway to ping a couple hosts to see if it REALLY works.
+ip_is_good_gw()
+{
+    # FIXME: Should we include pingenator as a submodule of awesome-powers?  If
+    #        so, should we use it by default here, add use_pingenator_sumbod
+    #        and/or use_pingenator_path or something like that to config file?
+    #
+    #        I'm going with yes, add it as submodule.  And yes, use it
+    #        explicitly based on our checkout location.  If that becomes
+    #        undesirable later, we'll add --use-system-pingenator or something
+    #        like that.  Probably best to add pingenator_path to conf and use
+    #        that if set, or just assume it's in $PATH if that variable is set
+    #        to "PATH".  or something.
+    #
+    go="$pingenator -g $1 --dns"
+    for x in $pingenator_excludes; do
+        go+=" --exclude $x"
+    done
+    decho $go
+    # FIXME: Should we call pingenator if --dry-run?  It could cause
+    #        problems, so I'm gonna go with "no".  For now.
+    deval $go
 }
 
 
@@ -241,18 +258,24 @@ check_ifaces()
     for iface in $*; do
         decho checking iface: $iface
         
-        # check iface state, skip if down
+        # check iface state, raise if needed
         #
-        # FIXME: good idea originally, but if our connection goes down (e.g.,
-        #        the 4gmodem I ues does this when "carrier-changed" happens,
-        #        and it's kinda frequent), we need to re-raise it.
+        # NOTE: We originally skipped lowered interfaces, but if our connection
+        #       goes down (e.g., the 4gmodem I ese does this when
+        #       "carrier-changed" happens, and it's kinda frequent), we need to
+        #       re-raise it.
         #
-        #        this means, any interface listed WILL get raised, so make sure
-        #        to remove dead interfaces that shouldn't be auto-raised.
+        #       This means, any interface listed WILL get raised, so make sure
+        #       to remove dead interfaces that shouldn't be auto-raised.
         #
         if [ "$(iface_get_state $iface)" != "activated" ]; then
-            decho "skipping inactive interface"
-            continue
+            if [ -n "$opt_dryrun" ]; then
+                decho "skipping inactive interface during --dry-run"
+                continue
+            else
+                decho "raising inactive interface"
+                nmcli con up $iface
+            fi
         fi
 
         # get the device name
@@ -286,40 +309,51 @@ check_ifaces()
         r=($(echo $routes | tr ',' '\n'))
         decho checking ${r[1]}
 
-        if ip_is_reachable ${r[1]}; then
-            # check if the route is already there
-            #
-            # NOTE: it doesn't hurt to add it a second time, but we want the
-            #       output of this script to be silent if nothing needed to be
-            #       changed.
-            #
-            decho "interface $iface is up, processing routes"
-            for ((i=0; i<${#r[@]}; i+=2)); do
-                #echo ip route show ${r[i]} via ${r[i+1]} dev $dev
-                #blarg=$(ip route show ${r[i]} via ${r[i+1]} dev $dev)
-                #echo blarg: $blarg
-                if [ -z "$(ip route show ${r[i]} via ${r[i+1]} dev $dev)" ]; then
-                    # we're really modifying the routing table, clear out all
-                    # managed routes first
-                    remove_all_managed_routes $*
-                    go="ip route add ${r[i]} via ${r[i+1]} dev $dev"
-                    echo $(timestamp): $go
-                    deval $go
-                fi
-            done
-
-            # check for dependent ifaces
-            v=${iface}_deps
-            deps=${!v}
-            if [ -n "$deps" ]; then
-                decho "$iface deps: $deps"
-                check_ifaces $deps
-            fi
-
-            break
-        else
-            decho "interface $iface not reachable"
+        # skip if not reachable
+        if ! ip_is_reachable ${r[1]}; then
+            decho "interface $iface not reachable, skipping"
+            continue
         fi
+
+        # skip if not actually a usable gateway
+        if ! ip_is_good_gw ${r[1]}; then
+            decho "interface $iface not a good gateway, skipping"
+            continue
+        fi
+
+        # Ok, we've got a winner!
+        
+        # check if the route is already there
+        #
+        # NOTE: it doesn't hurt to add it a second time, but we want the
+        #       output of this script to be silent if nothing needed to be
+        #       changed.
+        #
+        decho "interface $iface is a usable gateway, processing routes"
+        for ((i=0; i<${#r[@]}; i+=2)); do
+            #echo ip route show ${r[i]} via ${r[i+1]} dev $dev
+            #blarg=$(ip route show ${r[i]} via ${r[i+1]} dev $dev)
+            #echo blarg: $blarg
+            if [ -z "$(ip route show ${r[i]} via ${r[i+1]} dev $dev)" ]; then
+                # we're really modifying the routing table, clear out all
+                # managed routes first
+                remove_all_managed_routes $*
+                go="ip route add ${r[i]} via ${r[i+1]} dev $dev"
+                echo $(timestamp): $go
+                deval $go
+            fi
+        done
+
+        # check for dependent ifaces
+        v=${iface}_deps
+        deps=${!v}
+        if [ -n "$deps" ]; then
+            decho "$iface deps: $deps"
+            check_ifaces $deps
+        fi
+
+        break
+
     done
 }
 
@@ -329,12 +363,44 @@ check_ifaces()
 
 
 
+log=$0.log
+lock=$0.lock
+
 # redirect all output to the logfile
 if [ -z "$opt_stdout" ]; then
     exec 1>>$log
     exec 2>&1
 fi
 
+# parse our config
+if [ -f $0.conf ]; then
+    . $0.conf
+else
+    echo "ERROR: missing config file $0.conf"
+    exit 1
+fi
+
+# quick sanity check
+if [ -z "$iface_list" ]; then
+    echo "ERROR: iface_list not set"
+    exit 1
+fi
+decho "iface_list: $iface_list"
+
+# figure out path to pingenator
+pingenator=$(dirname $0)/../subprojects/pingenator/src/pingenator
+if [ ! -f $pingenator ]; then
+    echo "ERROR: $pingenator not found"
+    exit 1
+fi
+pingenator=$(realpath $pingenator)
+decho "pingenator: $pingenator"
+
+# lock the lockfile!
+#
+# NOTE: This means if anything fails after this, we need to decide if we're
+#       going to remove the lockfile when things go wrong.
+#
 go="touch $lock"
 decho $go
 deval $go
