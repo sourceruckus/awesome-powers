@@ -40,7 +40,7 @@ usage()
     echo
     echo "  -v, --verbose         More descriptive output."
     echo
-    echo"   -b, --backup          Create backups of existing files."
+    echo "  -b, --backup          Create backups of existing files."
 }
 
 
@@ -136,7 +136,7 @@ if [ -n "$opt_verbose" ]; then
     ln+=" -v"
 fi
 if [ -n "$opt_backup" ]; then
-    ln+=" bS .orig"
+    ln+=" -bS .orig"
 fi
 
 export ln src dst realpath
