@@ -140,7 +140,7 @@ decho opt_root: $opt_root
 decho src: $src
 decho dst: $dst
 
-go="$(dirname $0)/plant-symlinks $opt_dryrun $opt_verbose --backup $src $dst"
+go="$(dirname $0)/plant-symlinks $opt_dryrun $opt_verbose --backup --absolute $src $dst"
 decho $go
 deval $go
 
