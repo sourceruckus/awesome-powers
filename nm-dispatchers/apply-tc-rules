@@ -11,12 +11,23 @@
 
 AP=/scrap/awesome-powers
 
+# figure out what our config files should be named based on the name we were
+# invoked as, assuming it's "apply-SITENAME-tc-rules" and config files are
+# "net/SITENAME-INTNAME-tc-rules"
+SITE=$(basename $0 | sed 's|^apply-||' |sed 's|-tc-rules$||')
+RULES=$AP/net/$SITE-*-tc-rules
+if [ ! -f $(echo $RULES | awk '{print $1}') ]; then
+    # just quietly exit
+    exit 0
+fi
+
+
 case "$2" in
     up)
-        echo "applying tc-rules for $CONNECTION_ID ($DEVICE_IP_IFACE)"
+        echo "applying $SITE tc-rules for $CONNECTION_ID ($DEVICE_IP_IFACE)"
         # look through tc-rules scripts for one with a matching device
         gotit=
-        for x in $AP/net/*-tc-rules; do
+        for x in $RULES; do
             dev=$(awk -F= '/DEV=/ {print $NF}' $x)
             if [ "$dev" = "$DEVICE_IP_IFACE" ]; then
                 gotit=y
