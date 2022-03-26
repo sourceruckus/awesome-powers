@@ -13,20 +13,6 @@
 # NOTE: All output appended to logfile, which is then mailed and removed each
 #       night (log rotation and mailing is not this script's responsibility).
 #
-# FIXME: Add --mailto support, so I can get email whenever check-gateway
-#        changes anything.  Would be best if this was set in the config file
-#        and also settable via command line so that a default email address (or
-#        addresses) can get email whenever anyone invokes check-gateway and it
-#        actually changes things (i.e., not --dry-run and usable gateways have
-#        changed).
-#
-#        Also, I'm not so sure we want to continue the daily noisy log email
-#        paradigm... I've stopped reading them because it takes too long, which
-#        makes them useless.  We should just send alert emails when problems
-#        happen.  Although... it can't hurt to be logging the snots out of
-#        things and emailing them to me nightly (instead of rotating).  I can
-#        always delete them out of my inbox.
-#
 # FIXME: Should our goal here be to ensure that we only have a functional
 #        gateway?  In other words, should we remove bad gateway even if there's
 #        not a good replacement... The only reason NOT to do this, is the
@@ -345,7 +331,7 @@ usage()
         echo ERROR: $*
         echo
     fi
-    echo "usage: $(basename $0) OPTIONS" #[--help] [--verbose] [--dry-run] [--stdout] [--mail MAILTO]"
+    echo "usage: $(basename $0) OPTIONS"
     echo
     echo "  -h, --help                Show this help message and exit."
     echo
@@ -473,9 +459,7 @@ check_ifaces $iface_list
 
 # If we actually changed something, mail results (if configured)
 if [ -n "$gw_modified" -a -n "$opt_mail" ]; then
-    mail -s "$(basename $0): gateway modified" $opt_mail -A $log
-    # FIXME: should we truncate the log once this is done?  I'm gonna go with
-    #        no until I'm 100% sure this is all working.
+    mail -s "$(basename $0): gateway modified" $opt_mail --content-type=text/plain -A $log </dev/null
 fi
 
 go="rm -f $lock"
