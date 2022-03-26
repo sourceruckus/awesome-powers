@@ -56,7 +56,7 @@ check_wg()
     decho "$(timestamp): checking iface: $iface ($remote_ip)"
 
     # check to se if it's even up
-    if [ ! -n "$opt_verbose" ]; then
+    if [ -n "$opt_verbose" ]; then
         wg show $iface
     fi
     if ! wg show $iface >/dev/null 2>&1; then
