@@ -85,10 +85,17 @@ check_wg()
     #       gonna get called again shortly.
     #
     modified=y
+    echo "$(timestamp): remote ip $remote_ip NOT reachable, lower and re-raise."
+    go="wg show $iface"
+    decho $go
+    deval $go
     go="wg-quick down $iface"
     decho $go
     deval $go
     go="wg-quick up $iface"
+    decho $go
+    deval $go
+    go="wg show $iface"
     decho $go
     deval $go
 }
