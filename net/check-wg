@@ -53,11 +53,29 @@ check_wg()
 {
     iface=$1
     remote_ip=$2
-    decho "checking iface: $iface ($remote_ip)"
+    decho "$(timestamp): checking iface: $iface ($remote_ip)"
+
+    # check to se if it's even up
+    if [ ! -n "$opt_verbose" ]; then
+        wg show $iface
+    fi
+    if ! wg show $iface >/dev/null 2>&1; then
+        modified=y
+        echo "$(timestamp): iface $iface is down, raising"
+        go="wg-quick up $iface"
+        decho $go
+        deval $go
+        if [ $? != 0 ]; then
+            echo "$(timestamp): failed to raise $iface"
+        fi
+        # NOTE: We're just going to return, cleanup lockfiles, etc, here.
+        #       We'll wait until next run to try the ip reachable test.
+        return
+    fi
 
     # try to ping the remote ip
     if ip_is_reachable $remote_ip; then
-        decho "remote ip $remote_ip reachable, nothing to do"
+        decho "$(timestamp): remote ip $remote_ip reachable, nothing to do"
         return
     fi
 
@@ -172,29 +190,20 @@ fi
 if [ -f $0.conf ]; then
     . $0.conf
 else
-    echo "ERROR: missing config file $0.conf"
+    echo "$(timestamp): ERROR: missing config file $0.conf"
     exit 1
 fi
 
 # quick sanity checks
 if [ -z "$wg_iface" ]; then
-    echo "ERROR: wg_iface not set"
+    echo "$(timestamp): ERROR: wg_iface not set"
     exit 1
 fi
-decho "wg_iface: $wg_iface"
-#go="wg show $wg_iface"
-#if [ ! -n "$opt_verbose" ]; then
-#    go+=" >/dev/null 2>&1"
-#fi
-#go='wg show $wg_iface >/dev/null 2>&1'
-#echo $go
-#if ! $go; then
-if ! wg show $wg_iface >/dev/null 2>&1; then
-    echo "ERROR: wg_iface does not exist"
-    # FIXME: perhaps we should just try and raise it?
+decho "$(timestamp): wg_iface: $wg_iface"
+if [ ! -f /etc/wireguard/$wg_iface.conf ]; then
+    echo "$(timestamp): ERROR: wg_iface does not exist"
     exit 1
 fi
-
 
 # lock the lockfile!
 #
