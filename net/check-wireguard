@@ -105,8 +105,8 @@ check_wg()
 
     # not reachable, lower/raise
     #
-    # NOTE: Don't even try again, just assume it works now because check-wg is
-    #       gonna get called again shortly.
+    # NOTE: Don't even try again, just assume it works now because
+    #       check-wireguard is gonna get called again shortly.
     #
     modified=y
     echo "$(timestamp): remote ip $wg_server_ip NOT reachable, lower and re-raise."

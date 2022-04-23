@@ -6,7 +6,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 AP=/scrap/awesome-powers
 
 # periodic wireguard checking (and logfile appending)
-* * * * * root $AP/net/check-wg-nautilus --mail $MAILTO
+* * * * * root $AP/net/check-wireguard-nautilus --mail $MAILTO
 
 # end of day analysis and log rotation
 #
@@ -28,7 +28,7 @@ AP=/scrap/awesome-powers
 #        Would need to add a .maillock file in mail-and-purge-logfile and check
 #        for it in check-gateway.
 #
-5 0 * * * root MAILTO=$MAILTO $AP/logs/mail-and-purge-logfile $AP/net/check-wg-nautilus
+5 0 * * * root MAILTO=$MAILTO $AP/logs/mail-and-purge-logfile $AP/net/check-wireguard-nautilus
 
 # remove stale lock files during boot
-@reboot root rm -f $AP/net/check-wg-nautilus.lock
+@reboot root rm -f $AP/net/check-wireguard-nautilus.lock
