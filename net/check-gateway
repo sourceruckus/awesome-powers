@@ -459,7 +459,7 @@ check_ifaces $iface_list
 
 # If we actually changed something, mail results (if configured)
 if [ -n "$gw_modified" -a -n "$opt_mail" ]; then
-    mail -s "$(basename $0): gateway modified" $opt_mail --content-type=text/plain -A $log </dev/null
+    mail -s "$(basename $0): gateway modified" $opt_mail -E 'set nonullbodymsg' --content-type=text/plain -A $log </dev/null
 fi
 
 go="rm -f $lock"
