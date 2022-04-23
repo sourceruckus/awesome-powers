@@ -56,7 +56,7 @@ cp $log $log.sending
 echo >$log
 
 # mail the logfile
-mail -s "awesome logfile from $(hostname): $(basename $prog)" $MAILTO --content-type=text/plain -A $log.sending </dev/null
+mail -s "awesome logfile from $(hostname): $(basename $prog)" $MAILTO -E 'set nonullbodymsg' --content-type=text/plain -A $log.sending </dev/null
 
 # remove the logfile
 rm $log.sending
