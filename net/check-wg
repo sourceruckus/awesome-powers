@@ -37,9 +37,24 @@ deval()
 }
 
 
+# simple single ping test
 ip_is_reachable()
 {
     ping -w1 -c1 $1 >/dev/null 2>&1
+}
+
+
+# more advanced test using pingenator - the specified IP is pinged 10 times in
+# parallel and success is returned if ANY packet gets a reply.
+ip_is_reachable2()
+{
+    go="$pingenator -q -s0 $1 $1 $1 $1 $1 $1 $1 $1 $1 $1"
+    decho $go
+    if [ -n "$verbose" ]; then
+        deval $go
+    else
+        deval $go >/dev/null 2>&1
+    fi
 }
 
 
@@ -51,22 +66,20 @@ timestamp()
 
 check_wg()
 {
-    iface=$1
-    remote_ip=$2
-    decho "$(timestamp): checking iface: $iface ($remote_ip)"
+    decho "$(timestamp): checking iface: $wg_iface ($wg_server_ip)"
 
     # check to se if it's even up
     if [ -n "$opt_verbose" ]; then
-        wg show $iface
+        wg show $wg_iface
     fi
-    if ! wg show $iface >/dev/null 2>&1; then
+    if ! wg show $wg_iface >/dev/null 2>&1; then
         modified=y
-        echo "$(timestamp): iface $iface is down, raising"
-        go="wg-quick up $iface"
+        echo "$(timestamp): iface $wg_iface is down, raising"
+        go="wg-quick up $wg_iface"
         decho $go
         deval $go
         if [ $? != 0 ]; then
-            echo "$(timestamp): failed to raise $iface"
+            echo "$(timestamp): failed to raise $wg_iface"
         fi
         # NOTE: We're just going to return, cleanup lockfiles, etc, here.
         #       We'll wait until next run to try the ip reachable test.
@@ -74,8 +87,19 @@ check_wg()
     fi
 
     # try to ping the remote ip
-    if ip_is_reachable $remote_ip; then
-        decho "$(timestamp): remote ip $remote_ip reachable, nothing to do"
+    #
+    # FIXME: should eventually pick between the two ip_is_reachable methods
+    #        depending on presence of pingenator or a config variable?
+    #
+    if ip_is_reachable2 $wg_server_ip; then
+        decho "$(timestamp): remote ip $wg_server_ip reachable, nothing to do"
+        return
+    fi
+
+    # check to see if we have ANY internet connectivity before we yell about
+    # wireguard being hosed.
+    if ! ip_is_reachable2 $internet_ip; then
+        decho "$(timestamp): gateway IP not reachable, wait for internet before blaming wireguard"
         return
     fi
 
@@ -85,17 +109,14 @@ check_wg()
     #       gonna get called again shortly.
     #
     modified=y
-    echo "$(timestamp): remote ip $remote_ip NOT reachable, lower and re-raise."
-    go="wg show $iface"
+    echo "$(timestamp): remote ip $wg_server_ip NOT reachable, lower and re-raise."
+    go="wg show $wg_iface"
     decho $go
     deval $go
-    go="wg-quick down $iface"
+    go="wg-quick down $wg_iface"
     decho $go
     deval $go
-    go="wg-quick up $iface"
-    decho $go
-    deval $go
-    go="wg show $iface"
+    go="wg-quick up $wg_iface"
     decho $go
     deval $go
 }
@@ -211,6 +232,29 @@ if [ ! -f /etc/wireguard/$wg_iface.conf ]; then
     echo "$(timestamp): ERROR: wg_iface does not exist"
     exit 1
 fi
+if [ -z "$wg_server_ip" ]; then
+    echo "$(timestamp): ERROR: wg_server_ip not set"
+    exit 1
+fi
+decho "$(timestamp): wg_server_ip: $wg_server_ip"
+if [ -z "$internet_ip" ]; then
+    echo "$(timestamp): ERROR: internet_ip not set"
+    exit 1
+fi
+decho "$(timestamp): internet_ip: $internet_ip"
+
+# figure out path to pingenator
+#
+# FIXME: as soon as pingenator has an official release, replace this with a
+#        check in PATH and get rid of the pingenator submodule
+#
+pingenator=$(dirname $0)/../subprojects/pingenator/src/pingenator
+if [ ! -f $pingenator ]; then
+    echo "ERROR: $pingenator not found"
+    exit 1
+fi
+pingenator=$(realpath $pingenator)
+decho "pingenator: $pingenator"
 
 # lock the lockfile!
 #
@@ -222,11 +266,11 @@ decho $go
 deval $go
 
 modified=
-check_wg $wg_iface $remote_ip
+check_wg
 
 # If we actually changed something, mail results (if configured)
 if [ -n "$modified" -a -n "$opt_mail" ]; then
-    mail -s "$(basename $0): modified" $opt_mail --content-type=text/plain -A $log </dev/null
+    mail -s "$(basename $0): modified" $opt_mail -E 'set nonullbodymsg' --content-type=text/plain -A $log </dev/null
 fi
 
 go="rm -f $lock"
