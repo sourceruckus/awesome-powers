@@ -50,7 +50,7 @@ ip_is_reachable2()
 {
     go="$pingenator -q -s0 $1 $1 $1 $1 $1 $1 $1 $1 $1 $1"
     decho $go
-    if [ -n "$verbose" ]; then
+    if [ -n "$opt_verbose" ]; then
         deval $go
     else
         deval $go >/dev/null 2>&1
@@ -92,14 +92,14 @@ check_wg()
     #        depending on presence of pingenator or a config variable?
     #
     if ip_is_reachable2 $wg_server_ip; then
-        decho "$(timestamp): remote ip $wg_server_ip reachable, nothing to do"
+        decho "$(timestamp): wg server IP $wg_server_ip reachable, nothing to do"
         return
     fi
 
     # check to see if we have ANY internet connectivity before we yell about
     # wireguard being hosed.
     if ! ip_is_reachable2 $internet_ip; then
-        decho "$(timestamp): gateway IP not reachable, wait for internet before blaming wireguard"
+        decho "$(timestamp): internet IP $internet_ip not reachable, wait for internet before blaming wireguard"
         return
     fi
 
