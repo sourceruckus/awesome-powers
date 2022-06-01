@@ -6,7 +6,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 AP=/scrap/awesome-powers
 
 # periodic gateway checking (and logfile appending)
-* * * * * root $AP/net/check-gateway
+* * * * * root $AP/net/check-gateway-cah --mail $MAILTO
 
 # end of day analysis and log rotation
 #
@@ -28,7 +28,7 @@ AP=/scrap/awesome-powers
 #        Would need to add a .maillock file in mail-and-purge-logfile and check
 #        for it in check-gateway.
 #
-5 0 * * * root MAILTO=$MAILTO $AP/logs/mail-and-purge-logfile $AP/net/check-gateway
+5 0 * * * root MAILTO=$MAILTO $AP/logs/mail-and-purge-logfile $AP/net/check-gateway-cah
 
 # remove stale lock files during boot
-@reboot root rm -f $AP/net/check-gateway.lock
+@reboot root rm -f $AP/net/check-gateway-cah.lock
