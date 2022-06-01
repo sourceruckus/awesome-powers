@@ -145,7 +145,12 @@ ip_is_good_gw()
     decho $go
     # FIXME: Should we call pingenator if --dry-run?  It could cause
     #        problems, so I'm gonna go with "no".  For now.
-    deval $go
+    if [ -n "$opt_verbose" ]; then
+        deval $go
+    else
+        # be silent unless --verbose
+        deval $go >/dev/null 2>&1
+    fi
 }
 
 
