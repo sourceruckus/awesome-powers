@@ -2,13 +2,15 @@
 #
 # Awesome Powers - scripts & config files of pure awesomeness
 #
-# Copyright 2018-2021 Michael D Labriola <veggiemike@sourceruckus.org>
+# Copyright 2018-2022 Michael D Labriola <veggiemike@sourceruckus.org>
 #
 # Licensed under the GPLv3. See the file COPYING for details. 
 #
 # Populate a dir with symlinks to files in a template dir
 #
 
+# make sure all our variables and functions exist in subshells
+set -a
 
 # debug echo - only prints if enabled
 decho()
@@ -40,7 +42,9 @@ usage()
     echo
     echo "  -v, --verbose         More descriptive output."
     echo
-    echo"   -b, --backup          Create backups of existing files."
+    echo "  -b, --backup          Create backups of existing files."
+    echo
+    echo "  -a, --absolute        Use absolute pathnames in symlinks."
 }
 
 
@@ -54,8 +58,8 @@ usage()
 #       current positional arguments (e.g, $1, $2).
 #
 __opts=$(getopt -un $(basename $0) \
-    -o hnvb \
-    --long help,dry-run,verbose,backup -- $@)
+    -o hnvba \
+    --long help,dry-run,verbose,backup,absolute -- $@)
 if [ $? != 0 ]; then
     echo
     usage
@@ -67,6 +71,7 @@ set -- $__opts
 opt_dryrun=
 opt_verbose=
 opt_backup=
+opt_absolute=
 
 # parse the new positional arguments
 while true; do
@@ -85,6 +90,10 @@ while true; do
             ;;
         -b|--backup)
             opt_backup=1
+            shift
+            ;;
+        -a|--absolute)
+            opt_absolute=1
             shift
             ;;
 	--)
@@ -115,6 +124,7 @@ dst=$(realpath $2)
 decho opt_dryrun: $opt_dryrun
 decho opt_verbose: $opt_verbose
 decho opt_backup: $opt_backup
+decho opt_absolute: $opt_absolute
 decho src: $src
 decho dst: $dst
 
@@ -136,9 +146,27 @@ if [ -n "$opt_verbose" ]; then
     ln+=" -v"
 fi
 if [ -n "$opt_backup" ]; then
-    ln+=" bS .orig"
+    ln+=" -bS .orig"
 fi
 
-export ln src dst realpath
+# FIXME: This was originally written to help pre-populate template dirs for new
+#        hosts, in which case the realpath stuff seemed appropriate (otherwise
+#        we end up committing symlinks with absolute paths to our current
+#        checkout location).  However, now that we call this script directly
+#        from configenator to instlal system symlinks, it doesn't seem to make
+#        much sense.
+#
+#        Add a --absolute flag to skip the realpath stuff?
+#
+resolvepath()
+{
+    if [ -n "$2" ] && [ -z "$opt_absolute" ]; then
+        realpath --relative-to=$2 -s $1
+    else
+        realpath -s $1
+    fi
+}
+
+
 find . -type d -exec $mkdir -p $dst/{} \; \
-     -o -exec bash -c '$ln -fs $($realpath --relative-to=$(dirname $dst/{}) $src/{}) $dst/{}' \;
+     -o -exec bash -c '$ln -fs $(resolvepath $src/{} $(dirname $dst/{})) $dst/{}' \;

@@ -2,7 +2,7 @@
 #
 # Awesome Powers - scripts & config files of pure awesomeness
 #
-# Copyright 2018-2021 Michael D Labriola <veggiemike@sourceruckus.org>
+# Copyright 2018-2022 Michael D Labriola <veggiemike@sourceruckus.org>
 #
 # Licensed under the GPLv3. See the file COPYING for details. 
 #
@@ -13,8 +13,8 @@ nodes_default="frodo sam merry gandalf srv-files aragorn"
 nodes_dom0="frodo sam merry gandalf"
 nodes_srv="srv-files srv-net srv-auth srv-www srv-router1 srv-router2"
 nodes_dev="aragorn legolas gimli boromir"
-nodes_home="gandalf elrond galadriel glorfindel"
-nodes_nautilus="coresrv1 coresrv2 netsrv1 netsrv2 netsrv3 shiphouse nautilusfs capture rovnav argusgui hercgui copynuc rrnuc logger datalabfour datalabfive"
+nodes_home="gandalf elrond galadriel glorfindel haldir"
+nodes_nautilus="coresrv1 coresrv2 netsrv1 netsrv2 netsrv3 shiphouse nautilusfs capture rovnav argusgui hercgui copynuc rrnuc logger datalabfour datalabfive datarec dataxform netutil alleycat alleyrat de-nuc lilhercgui blame-nuc"
 
 
 usage()

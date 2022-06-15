@@ -1,0 +1,280 @@
+#!/bin/bash
+#
+# Awesome Powers - scripts & config files of pure awesomeness
+#
+# Copyright 2018-2022 Michael D Labriola <veggiemike@sourceruckus.org>
+#
+# Licensed under the GPLv3. See the file COPYING for details. 
+#
+# Intended to be called periodically (every 10-15 seconds or so, perhaps once a
+# minute) to verify that a specified WireGuard interface is working.  If the
+# specified IP isn't reachable, the wg interface is lowered and re-raised.
+#
+# NOTE: All output appended to logfile, which is then mailed and removed each
+#       night (log rotation and mailing is not this script's responsibility).
+#
+
+
+log=$0.log
+lock=$0.lock
+
+
+# debug echo - only prints if enabled
+decho()
+{
+    if [ -n "$opt_verbose" ]; then
+        echo "$*"
+    fi
+}
+
+
+# dry-run eval - evals unless dry-run specified
+deval()
+{
+    if [ -z "$opt_dryrun" ]; then
+        eval $*
+    fi
+}
+
+
+# simple single ping test
+ip_is_reachable()
+{
+    ping -w1 -c1 $1 >/dev/null 2>&1
+}
+
+
+# more advanced test using pingenator - the specified IP is pinged 10 times in
+# parallel and success is returned if ANY packet gets a reply.
+ip_is_reachable2()
+{
+    go="$pingenator -q -s0 $1 $1 $1 $1 $1 $1 $1 $1 $1 $1"
+    decho $go
+    if [ -n "$opt_verbose" ]; then
+        deval $go
+    else
+        deval $go >/dev/null 2>&1
+    fi
+}
+
+
+timestamp()
+{
+    date -Iseconds
+}
+
+
+check_wg()
+{
+    decho "$(timestamp): checking iface: $wg_iface ($wg_server_ip)"
+
+    # check to se if it's even up
+    if [ -n "$opt_verbose" ]; then
+        wg show $wg_iface
+    fi
+    if ! wg show $wg_iface >/dev/null 2>&1; then
+        modified=y
+        echo "$(timestamp): iface $wg_iface is down, raising"
+        go="wg-quick up $wg_iface"
+        decho $go
+        deval $go
+        if [ $? != 0 ]; then
+            echo "$(timestamp): failed to raise $wg_iface"
+        fi
+        # NOTE: We're just going to return, cleanup lockfiles, etc, here.
+        #       We'll wait until next run to try the ip reachable test.
+        return
+    fi
+
+    # try to ping the remote ip
+    #
+    # FIXME: should eventually pick between the two ip_is_reachable methods
+    #        depending on presence of pingenator or a config variable?
+    #
+    if ip_is_reachable2 $wg_server_ip; then
+        decho "$(timestamp): wg server IP $wg_server_ip reachable, nothing to do"
+        return
+    fi
+
+    # check to see if we have ANY internet connectivity before we yell about
+    # wireguard being hosed.
+    if ! ip_is_reachable2 $internet_ip; then
+        decho "$(timestamp): internet IP $internet_ip not reachable, wait for internet before blaming wireguard"
+        return
+    fi
+
+    # not reachable, lower/raise
+    #
+    # NOTE: Don't even try again, just assume it works now because
+    #       check-wireguard is gonna get called again shortly.
+    #
+    modified=y
+    echo "$(timestamp): remote ip $wg_server_ip NOT reachable, lower and re-raise."
+    go="wg show $wg_iface"
+    decho $go
+    deval $go
+    go="wg-quick down $wg_iface"
+    decho $go
+    deval $go
+    go="wg-quick up $wg_iface"
+    decho $go
+    deval $go
+}
+
+
+usage()
+{
+    if [ -n "$*" ]; then
+        echo ERROR: $*
+        echo
+    fi
+    echo "usage: $(basename $0) OPTIONS"
+    echo
+    echo "  -h, --help                Show this help message and exit."
+    echo
+    echo "  -v, --verbose             Be verbose.  Default is silent unless something"
+    echo "                            needs to be modified."
+    echo
+    echo "  -n, --dry-run             Don't actually change anything, just print what"
+    echo "                            would be done."
+    echo
+    echo "  -s, --stdout              Log to stdout instead of the logfile.  Can't be used"
+    echo "                            w/ --mail."
+    echo
+    echo "  -m, --mail EMAILADDRESS   Email the logfile to EMAILADDRESS if anything was"
+    echo "                            modified.  Can't be used w/ --stdout."
+    echo
+    echo "By default, output is appended to $log and is silent unless"
+    echo "something changes.  If --mail specified, the logfile is also emailed to"
+    echo "EMAILADDRESS, but only if somthing is changed."
+}
+
+
+# call getopt
+#
+# NOTE: This handles spacing out arguments correctly for the case statement
+#       below and checks for unknown flags.  Required flags are checked for
+#       below.
+#
+# NOTE: The set -- command causes the resulting output of getopt to replace the
+#       current positional arguments (e.g, $1, $2).
+#
+__opts=$(getopt -un $0 \
+    -o hvnsm: \
+    --long help,verbose,dry-run,stdout,mail: -- $@)
+if [ $? != 0 ]; then
+    echo
+    usage
+    exit 1
+fi
+set -- $__opts
+
+
+opt_dryrun=
+opt_verbose=
+opt_stdout=
+opt_mail=
+# parse the new positional arguments
+while true; do
+    case "$1" in
+        -v|--verbose)
+            opt_verbose=y
+            shift 1
+            ;;
+        -n|--dry-run)
+            opt_dryrun=y
+            shift 1
+            ;;
+        -s|--stdout)
+            opt_stdout=y
+            opt_mail=
+            shift 1
+            ;;
+        -m|--mail)
+            opt_mail=$2
+            opt_stdout=
+            shift 2
+            ;;
+        --)
+            # done parsing
+            shift
+            break
+            ;;
+        *)
+            usage
+            exit 1
+            ;;
+    esac
+done
+
+
+# redirect all output to the logfile
+if [ -z "$opt_stdout" ]; then
+    exec 1>>$log
+    exec 2>&1
+fi
+
+# parse our config
+if [ -f $0.conf ]; then
+    . $0.conf
+else
+    echo "$(timestamp): ERROR: missing config file $0.conf"
+    exit 1
+fi
+
+# quick sanity checks
+if [ -z "$wg_iface" ]; then
+    echo "$(timestamp): ERROR: wg_iface not set"
+    exit 1
+fi
+decho "$(timestamp): wg_iface: $wg_iface"
+if [ ! -f /etc/wireguard/$wg_iface.conf ]; then
+    echo "$(timestamp): ERROR: wg_iface does not exist"
+    exit 1
+fi
+if [ -z "$wg_server_ip" ]; then
+    echo "$(timestamp): ERROR: wg_server_ip not set"
+    exit 1
+fi
+decho "$(timestamp): wg_server_ip: $wg_server_ip"
+if [ -z "$internet_ip" ]; then
+    echo "$(timestamp): ERROR: internet_ip not set"
+    exit 1
+fi
+decho "$(timestamp): internet_ip: $internet_ip"
+
+# figure out path to pingenator
+#
+# FIXME: as soon as pingenator has an official release, replace this with a
+#        check in PATH and get rid of the pingenator submodule
+#
+pingenator=$(dirname $0)/../subprojects/pingenator/src/pingenator
+if [ ! -f $pingenator ]; then
+    echo "ERROR: $pingenator not found"
+    exit 1
+fi
+pingenator=$(realpath $pingenator)
+decho "pingenator: $pingenator"
+
+# lock the lockfile!
+#
+# NOTE: This means if anything fails after this, we need to decide if we're
+#       going to remove the lockfile when things go wrong.
+#
+go="touch $lock"
+decho $go
+deval $go
+
+modified=
+check_wg
+
+# If we actually changed something, mail results (if configured)
+if [ -n "$modified" -a -n "$opt_mail" ]; then
+    mail -s "$(basename $0): modified" $opt_mail -E 'set nonullbodymsg' --content-type=text/plain -A $log </dev/null
+fi
+
+go="rm -f $lock"
+decho $go
+deval $go
+
+exit 0

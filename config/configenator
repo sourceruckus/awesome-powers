@@ -2,7 +2,7 @@
 #
 # Awesome Powers - scripts & config files of pure awesomeness
 #
-# Copyright 2018-2021 Michael D Labriola <michael.d.labriola@gmail.com>
+# Copyright 2018-2022 Michael D Labriola <veggiemike@sourceruckus.org>
 #
 # Licensed under the GPLv3. See the file COPYING for details. 
 #
@@ -44,6 +44,8 @@ usage()
     echo "  -v, --verbose         More descriptive output."
     echo
     echo "  -H, --host HOSTNAME   Use alternate system hostname."
+#    echo
+#    echo "  -S, --site SITE       Search specific site for HOST template."
     echo
     echo "  -r, --root ROOTDIR    Use alternate root dir for installed files."
 }
@@ -121,7 +123,11 @@ fi
 
 # double-check that we can find a unique template dir based on provided
 # hostname
-template=*/$opt_host
+#
+# FIXME: should probably add --site so we can explicitly specify that in case
+#        of same-named hosts at multiple sites
+#
+template=$(dirname $0)/*/$opt_host
 if [ "$(echo $template | wc -w)" != "1" ]; then
     usage "HOSTNAME must be unique"
     exit 1
@@ -140,7 +146,7 @@ decho opt_root: $opt_root
 decho src: $src
 decho dst: $dst
 
-go="$(dirname $0)/plant-symlinks $opt_dryrun $opt_verbose --backup $src $dst"
+go="$(dirname $0)/plant-symlinks $opt_dryrun $opt_verbose --backup --absolute $src $dst"
 decho $go
 deval $go
 
