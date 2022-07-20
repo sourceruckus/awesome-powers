@@ -63,8 +63,8 @@ echo nodes: $nodes
 for n in $nodes; do
     gkrellm -s $n &!
     # w/out sleep, some of the windows end up only partially drawn...  1 second
-    # seems to fix it.  let's try .1 and see if it works.
-    sleep .1
+    # seems to fix it, most of the time.  .2 seems to fix it all the time.
+    sleep .2
 done
 
 
