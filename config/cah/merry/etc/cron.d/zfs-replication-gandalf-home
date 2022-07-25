@@ -1,0 +1,23 @@
+# -*- mode: sh -*-
+
+MAILTO=michael.d.labriola@gmail.com
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+AP=/scrap/awesome-powers
+
+# pull from gandalf hourly
+30 * * * * root $AP/sync/zfs-replication-gandalf-home
+
+# end of day analysis and log rotation
+#
+# NOTE: This will block if replication is still running until it finishes, then
+#       mail the logfile and remove it.  However, if this starts to rotate
+#       logfiles and then zfs-replication starts up, that script doesn't wait
+#       so logfiles get wonked.  Make sure to schedule this job slightly after
+#       the zfs-replication job and all will be well.
+#
+31 0 * * * root MODE=analyze $AP/sync/zfs-replication-gandalf-home
+35 0 * * * root MAILTO=$MAILTO $AP/logs/mail-and-purge-logfile $AP/sync/zfs-replication-gandalf-home
+
+# remove stale lock files during boot
+@reboot root rm -f $AP/sync/zfs-replication-gandalf-home.lock
