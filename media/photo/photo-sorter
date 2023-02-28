@@ -1,0 +1,90 @@
+#!/bin/zsh
+#
+
+PHOTOROOT=/scrap/photos
+SRCDIR=/media/disk/dcim/100msdcf
+EXTENSION=.jpg
+TEST=0
+
+
+usage(){
+    echo "usage: photo-sorter OPTIONS"
+    echo "OPTIONS:"
+    echo "  --srcdir=SRCDIR          specify SRCDIR (default:$SRCDIR)"
+    echo "  --photoroot=PHOTOROOT    specify PHOTOROOT (default:$PHOTOROOT)"
+    echo "  --extension=.SOMETHING   specify the file EXTENSION (default:$EXTENSION)"
+    echo "  --test                   just output.  don't actually make any changes"
+}
+
+
+getdate(){
+    retval=`/usr/bin/stat $1 | awk '{if ($1 ~ /Modify:/) printf "%s %s", $2, $3}'`
+    retval=`echo $retval | sed 's| |-|g'`
+    retval=`echo $retval | sed 's|:|-|g'`
+    echo $retval | awk -F. '{print $1}'
+}
+
+getdate_by_name(){
+    #YYYYMMDD_HHMMSS.jpg
+    retval=`basename $1`
+    year=${retval:0:4}
+    month=${retval:4:2}
+    day=${retval:6:2}
+    hour=${retval:9:2}
+    min=${retval:11:2}
+    sec=${retval:13:2}
+    echo $year-$month-$day-$hour-$min-$sec
+}
+
+
+#--------------------
+for x in $argv; do
+    opt=(`echo $x | awk -F = '{print $1 " " $2}'`)
+    #echo $opt
+    case "$opt[1]" in
+	--srcdir)
+	    SRCDIR=$opt[2]
+	    ;;
+	--photoroot)
+	    PHOTOROOT=$opt[2]
+	    ;;
+	--test)
+	    TEST=1
+	    ;;
+	--extension)
+	    EXTENSION=$opt[2]
+	    ;;
+	*)
+	    echo "error: bad usage"
+	    usage
+	    exit 1
+    esac
+done
+
+echo "SRCDIR=$SRCDIR"
+echo "PHOTOROOT=$PHOTOROOT"
+echo "EXTENSION=$EXTENSION"
+echo "TEST=$TEST"
+
+lastname=
+iter=1
+#for x in $SRCDIR/*.MTS; do
+#for x in $SRCDIR/*.JPG; do
+for x in $SRCDIR/*.jpg; do
+    date="`getdate $x`"
+    #date="`getdate_by_name $x`"
+    temp=(`echo $date | awk -F - '{print $1 " " $2 " " $3}'`)
+    filename=$PHOTOROOT/$temp[1]/$temp[2]/$date
+    if [ "$filename" = "$lastname" ]; then
+	iter=$((iter+1))
+    else
+	iter=1
+    fi
+    lastname=$filename
+    filename+=-$iter$EXTENSION
+    echo "$x --> $filename"
+    if [ "$TEST" != 1 ]; then
+	install -Dp -m 664 $x $filename
+    fi
+done
+

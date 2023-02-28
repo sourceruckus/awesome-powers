@@ -1,0 +1,185 @@
+#!/bin/zsh
+#
+# This assumes that you've already used dvgrab/kino to create a
+# directory of split dv files with timestamps in their filenames (filenames
+# must be something_-_timestamp.dv).
+# OR
+# You've already downloaded movies from something that preserves timestamps
+# natively
+
+MOVIEROOT=$HOME/fakescrap/movies
+SRCDIR=$HOME/DV
+DOSTAMPS=0
+RENAME=1
+TEST=0
+
+# Should autodetect this if not specified, instead of having a
+# default.  But I haven't implemented that yet, and ffmpeg also
+# doesn't figure it out on the fly... so we have a default of 16:9
+# since almost all of my video is 16:9
+ASPECT=16:9
+
+
+usage(){
+    echo "usage: movie-generator OPTIONS"
+    echo "OPTIONS:"
+    echo "  --srcdir=SRCDIR         specify SRCDIR (default:$SRCDIR)"
+    echo "  --movieroot=MOVIEROOT   specify MOVIEROOT (default:$MOVIEROOT)"
+    echo "  --time-in-filename      file times in filename (foo_-_timestamp.dv)"
+    echo "  --no-rename             don't modify filename"
+    echo "  --aspect=RATIO          specify aspect ratio of dv (default: $ASPECT)"
+    echo "  --test                  just output.  don't actually make any changes"
+}
+
+
+timestamp(){
+    stamp=`echo \`basename $1\` | awk -F _-_ '{split($2,tmp,".dv"); print tmp[1]}'`
+    #echo $stamp
+    stamp=`echo $stamp | sed 's|_| |g'`
+    stamp=`echo $stamp | sed 's|-|:|g'`
+    stamp=`echo $stamp | sed 's|\.|-|g'`
+    #echo stamp: $stamp
+    touch -d "$stamp" $1
+}
+
+
+getdate(){
+    if [ "$TEST" != "1" ]; then
+	thefile=$1
+    else
+	thefile=/tmp/movie-generator.tmp
+    fi
+    retval=`/usr/bin/stat $thefile | awk '{if ($1 ~ /Modify:/) printf "%s %s", $2, $3}'`
+    retval=`echo $retval | sed 's| |-|g'`
+    retval=`echo $retval | sed 's|:|-|g'`
+    echo $retval | awk -F. '{print $1}'
+}
+
+
+dv2mpeg2(){
+    file_dv=$1
+    file_mpeg=$2
+    aspect=$3
+
+    [ -n "$aspect" ] && aspect="-aspect $aspect"
+
+    audio_format=ac3
+    audio_bitrate=192k
+
+    normalisation=ntsc
+    #normalisation=pal
+
+    interlace="-ildct 1 -ilme 1"
+    progressive="-deinterlace"
+    #interlace=$progressive
+
+    file=`basename $file_dv | sed 's|.dv$||'`
+    file_ac3=/tmp/$file.ac3
+    file_m2v=/tmp/$file.m2v
+
+    # single pass mpeg2
+    go="ffmpeg -v 0 -f dv -i $file_dv -f rawvideo -pix_fmt yuv420p pipe:"
+    go+=" -vn -f $audio_format -ac 2 -ab $audio_bitrate -ar 48000 -y $file_ac3"
+    go+=" | ffmpeg -v 0 -f rawvideo -pix_fmt yuv420p -s $normalisation"
+    go+=" -r $normalisation -i pipe: -an -target dvd -f mpeg2video"
+    go+=" -maxrate 8000k $interlace $aspect -y $file_m2v"
+
+    echo $go
+    [ $TEST != 1 ] && eval $go
+
+    go="mplex -v 0 -f 8 -o $file_mpeg $file_m2v $file_ac3"
+    echo $go
+    [ $TEST != 1 ] && eval $go
+
+    go="rm -f $file_m2v $file_ac3"
+    echo $go
+    [ $TEST != 1 ] && eval $go
+}
+
+
+#--------------------
+for x in $argv; do
+    opt=(`echo $x | awk -F = '{print $1 " " $2}'`)
+    #echo $opt
+    case "$opt[1]" in
+	--srcdir)
+	    SRCDIR=$opt[2]
+	    ;;
+	--movieroot)
+	    MOVIEROOT=$opt[2]
+	    ;;
+	--time-in-filename)
+	    DOSTAMPS=1
+	    ;;
+	--no-rename)
+	    RENAME=0
+	    ;;
+	--aspect)
+	    ASPECT=$opt[2]
+	    ;;
+	--test)
+	    TEST=1
+	    ;;
+	*)
+	    echo "error: bad usage"
+	    usage
+	    exit 1
+    esac
+done
+
+echo "SRCDIR=$SRCDIR"
+echo "MOVIEROOT=$MOVIEROOT"
+echo "DOSTAMPS=$DOSTAMPS"
+echo "RENAME=$RENAME"
+echo "ASPECT=$ASPECT"
+echo "TEST=$TEST"
+
+#num=0
+for x in $SRCDIR/*; do
+    #num=$((num+1))
+    #numstring=`echo $num | awk '{printf "%03s", $1}'`
+    #echo x: $x
+    #echo num: $num
+    if [ "$DOSTAMPS" != "0" ]; then
+	stamp=`basename $x | awk -F _-_ '{split($2,tmp,".dv"); print tmp[1]}'`
+	#echo $stamp
+	stamp=`echo $stamp | sed 's|_| |g'`
+	stamp=`echo $stamp | sed 's|-|:|g'`
+	stamp=`echo $stamp | sed 's|\.|-|g'`
+	#echo stamp: $stamp
+	touch -d "$stamp" /tmp/movie-generator.tmp
+	if [ "$TEST" != "1" ]; then
+	    touch -d "$stamp" $x
+	fi
+	#filename=`basename $x | awk -F _-_ '{print tolower($1)}'`$numstring
+    #else
+	#filename=`basename $x | sed 's|\.[[:alnum:]]\+$||' | awk '{print tolower($argv)}'`
+    fi
+    filename=`basename $x`
+    #echo $filename
+    date="`getdate $x`"
+    #echo date: $date
+    temp=(`echo $date | awk -F - '{print $1 " " $2 " " $3}'`)
+    #echo temp: $temp
+    if [ "$RENAME" != "0" ]; then
+	filename="$date"
+    fi
+    filename="$MOVIEROOT/$temp[1]/$temp[2]/$filename.mpeg"
+    echo "$x --> $filename"
+    if [ "$TEST" != "1" ]; then
+	mkdir -p `dirname $filename`
+    fi
+
+    dv2mpeg2 $x $filename $ASPECT
+
+    if [ "$TEST" != "1" ]; then
+	chmod 444 $filename
+	if [ "$DOSTAMP" != "0" ]; then
+	    touch -d "$stamp" $filename
+	else
+	    touch -r $x $filename
+	fi
+    fi
+done
+
+echo all done.

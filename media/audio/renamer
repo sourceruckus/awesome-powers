@@ -1,0 +1,77 @@
+#!/usr/bin/env python3
+"""
+renamer
+
+this program renames files into a nice consistent "## - track_name" format.
+
+usage: renamer [OPTIONS] [FILES]
+
+  --dry-run      Just print what would be done.
+
+  --verbose      Extra debug output
+
+  --pattern      FIXME: not implemented yet, assumes "##. name"
+
+  ex: renamer --dry-run *.ogg
+"""
+
+import os
+import getopt
+import sys
+
+
+def vprint(*kw):
+    """no-op debug print function.  to enable these print statements, set vprint =
+    print
+
+    """
+    pass
+
+
+def usage(message=None):
+    """
+    displays the usage message (program's doc string) along with an optional
+    error message.
+    """
+    if message:
+        print("error: %s" % message)
+    print(__doc__.strip())
+
+
+#------------------------------ main program ------------------------------#
+
+
+# parse arguments
+dry_run = False
+
+try:
+    opts, args = getopt.gnu_getopt(sys.argv[1:], '', ['dry-run', 'verbose'])
+
+    for flag, arg in opts:
+        if flag == "--dry-run":
+            dry_run = True
+        elif flag == "--verbose":
+            vprint = print
+    
+    if not args:
+        raise Exception("invalid usage")
+    
+except Exception as e:
+    usage(e)
+    sys.exit(1)
+
+
+
+vprint("args:", args)
+
+
+# ok, go
+for x in args:
+    # FIXME: this is pretty lame pattern matching.  assuming format is
+    #        "##. track name.ext"
+    new_name = " - ".join(x.split('. ')).lower()
+    print(x, "-->", new_name)
+    if not dry_run:
+        os.rename(x, new_name)
+
+sys.exit(0)

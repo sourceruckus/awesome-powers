@@ -1,0 +1,381 @@
+#!/bin/zsh
+#
+
+WWWROOT=/var/www/html
+MEDIAROOT=/scrap
+PHOTODIR=photos
+MOVIEDIR=movies
+GALLERYDIR=shrunk
+MODE=PHOTO
+TEST=0
+START_YEAR=""
+START_MONTH=""
+
+
+usage(){
+    echo "usage: photo-gallery OPTIONS"
+    echo "OPTIONS:"
+    echo "  --wwwroot=WWWROOT          specify WWWROOT (default:$WWWROOT)"
+    echo "  --mediaroot=MEDIAROOT      specify MEDIAROOT (default:$MEDIAROOT)"
+    echo "  --photodir=PHOTODIR        specify PHOTODIR (default:$PHOTODIR)"
+    echo "  --moviedir=MOVIEDIR        specify MOVIEDIR (default:$MOVIEDIR)"
+    echo "  --gallerydir=GALLERYDIR    specify GALLERYDIR (default:$GALLERYDIR)"
+    echo ""
+    echo "  --photos                   we're making a photo gallery (default)"
+    echo "  --movies                   we're making a movie gallery"
+    echo ""
+    echo "  --year=dir                 directory to start in (year)"
+    echo "  --month=dir                directory to start in (month)"
+    echo "  --test                     just output.  don't actually make any changes"
+}
+
+
+
+get_title(){
+    if [ -z "$1" ]; then
+	echo "empty title"
+    fi
+
+    month=`basename $1`
+    year=`dirname $1`
+    year=`basename $year`
+
+    #echo month: $month
+    #echo year: $year
+
+    case $month in
+	01)
+	    title="January, $year"
+	    ;;
+	02)
+	    title="February, $year"
+	    ;;
+	03)
+	    title="March, $year"
+	    ;;
+	04)
+	    title="April, $year"
+	    ;;
+	05)
+	    title="May, $year"
+	    ;;
+	06)
+	    title="June, $year"
+	    ;;
+	07)
+	    title="July, $year"
+	    ;;
+	08)
+	    title="August, $year"
+	    ;;
+	09)
+	    title="September, $year"
+	    ;;
+	10)
+	    title="October, $year"
+	    ;;
+	11)
+	    title="November, $year"
+	    ;;
+	12)
+	    title="December, $year"
+	    ;;
+	*)
+	    title="$year-$x"
+	    ;;
+    esac
+    
+    echo $title
+}
+
+
+month_PHOTO(){
+    echo "--- $0 ---"
+    
+    echo -ne "$1: resizing photos and generating thumbnails...  "
+    dir="$gdir/`basename $1`"
+    for x in $1/*; do
+	y=`basename $x`
+	[ "$TEST" != "1" ] && mkdir -p $dir
+	if [ ! -f $dir/$y ]; then
+	    go="convert -size 640x640 $x -resize 640x640 +profile \"*\" $dir/$y"
+	    echo $go
+	    [ "$TEST" != "1" ] && eval $go
+	fi
+	if [ ! -f $dir/thumb_$y ]; then
+	    go="convert -size 120x120 $x -resize 120x120 +profile \"*\" $dir/thumb_$y"
+	    echo $go
+	    [ "$TEST" != "1" ] && eval $go
+	fi
+    done
+    echo "done"
+
+    html="$dir/index.html"
+    echo -ne "$1: generating html index file '$html'...  "
+    if [ "$TEST" != "1" ]; then
+	echo -e "<html>\n<head>\n<title>$2</title>\n</head>\n<body>" > $html
+	echo -e "<center>\n<h1>$2</h1>\n" >> $html
+	echo -e "<a href=..>back to year index</a>\n" >> $html
+	echo -e "<table cellpadding=10 callspacing=10 border=5>\n" >> $html
+	num=0
+	echo -e "<tr>" >> $html
+	
+	previous=""
+	next=""
+	for x in $dir/*.jpg; do
+	    x=`basename $x`
+	    if (echo $x | grep -E "^thumb_" >/dev/null); then
+		continue
+	    fi
+#	for x in `/bin/ls $dir | egrep -v -e "^thumb_" | egrep -v -e "index.html"`; do
+	    echo x: $x
+	    if [ $num -eq 4 ]; then
+		echo -e "</tr>\n" >> $html
+		echo -e "<tr>" >> $html
+		num=0
+	    fi
+	    imghtml_ref=`echo $x | awk -F.jpg '{print $1}'`.html
+	    imghtml=$dir/$imghtml_ref
+	    echo "imghtml_ref: $imghtml_ref"
+	    echo "imghtml: $imghtml"
+	    echo "<td align=center>" >> $html
+	    echo "<a href=$imghtml_ref><img src=thumb_$x></a><br>" >> $html
+	    echo "<a href=$x>medium</a>" >> $html
+	    month=`basename $1`
+	    year=`basename \`dirname $1\``
+	    #echo year: $year
+	    #echo month: $month
+	    huge=../../../photos/$year/$month/$x
+	    echo "<a href=$huge>huge</a>" >> $html
+	    echo "</td>" >> $html
+
+	    # now generate the image's html file
+	    echo -e "<html>\n<head>\n<title>$x</title>\n</head>\n<body>" > $imghtml
+	    echo -e "<center>\n<h1>$x</h1>\n" >> $imghtml
+	    echo -e "<table cellpadding=10 callspacing=10 border=5>\n" >> $imghtml
+	    echo -e "<tr>" >> $imghtml
+	    echo "<td align=center>" >> $imghtml
+	    echo "<a href=$huge><img src=$x></a><br>" >> $imghtml
+	    if [ -n "$previous" ]; then
+		echo "<a href=$previous_ref>previous</a>" >> $imghtml
+		# finish up the previous html file
+		echo "<a href=$imghtml_ref>next</a>" >> $previous
+		echo "</td>\n</tr>\n</table>\n</center>\n</body>\n</html>" >> $previous
+	    else
+		echo "previous" >> $imghtml
+	    fi
+	    echo "||" >> $imghtml
+	    echo "<a href=index.html>index</a>" >> $imghtml
+	    echo "||" >> $imghtml
+	    # add the 'next' link on the next pass through...
+	    previous=$imghtml
+	    previous_ref=$imghtml_ref
+
+	    num=$((num+1))
+	done
+
+	# finish up the last img html
+	echo "next" >> $previous
+	echo "</td>\n</tr>\n</table>\n</center>\n</body>\n</html>" >> $previous
+	
+	echo -e "</tr>\n" >> $html
+	echo -e "</table>\n" >> $html
+	echo -e "</center>\n</body>\n</html>" >> $html
+    fi
+    echo "done"
+}
+
+
+month_MOVIE(){
+    echo "--- $0 ---"
+    
+    echo -ne "$1: transcoding media and generating thumbnails...  "
+    dir="$gdir/`basename $1`"
+    for x in $1/*; do
+	y=`basename $x`
+	z=`echo $y | sed 's|.mp4$|.3gp|'`
+	[ "$TEST" != "1" ] && mkdir -p $dir
+	if [ ! -f $dir/$z ]; then
+	    go="ffmpeg -i $x -v 1 -vcodec mpeg4 -s 320x180 -b 400k -r 24 -acodec libfaac -ab 128k -ar 44000 -ac 2 $dir/$z"
+	    echo $go
+	    [ "$TEST" != "1" ] && eval $go
+	fi
+	z=thumb_`echo $y | sed 's|.mp4$||'`
+	if [ ! -f $dir/$z-1.jpg ]; then
+	    go="ffmpeg -i $x -vframes 1 $dir/$z-%d.jpg"
+	    go+=" && convert -size 120x120 $dir/$z-1.jpg -resize 120x120 +profile \"*\" $dir/$z-1.jpg"
+	    echo $go
+	    [ "$TEST" != "1" ] && eval $go
+	fi
+    done
+    echo "done"
+
+    html="$dir/index.html"
+    echo -ne "$1: generating html index file '$html'...  "
+    if [ "$TEST" != "1" ]; then
+	echo -e "<html>\n<head>\n<title>$2</title>\n</head>\n<body>" > $html
+	echo -e "<center>\n<h1>$2</h1>\n" >> $html
+	echo -e "<table cellpadding=10 callspacing=10 border=5>\n" >> $html
+	num=0
+	echo -e "<tr>" >> $html
+	
+	for small_movie in `/bin/ls $dir | egrep -v -e "^thumb_" | egrep -v -e "index.html"`; do
+	    #echo small_movie: $small_movie
+	    movie=`echo $small_movie | sed 's|.3gp$|.mp4|'`
+	    #echo movie: $movie
+	    thumb=thumb_`echo $small_movie | sed 's|.3gp$||'`-1.jpg
+	    #echo $thumb
+
+	    if [ $num -eq 4 ]; then
+		echo -e "</tr>\n" >> $html
+		echo -e "<tr>" >> $html
+		num=0
+	    fi
+	    echo "<td align=center>" >> $html
+	    month=`basename $1`
+	    year=`basename \`dirname $1\``
+	    #echo year: $year
+	    #echo month: $month
+	    echo "<a href=../../../movies/$year/$month/$movie><img src=$thumb></a><br>" >> $html
+	    echo "<a href=$small_movie>small</a>" >> $html
+	    echo "<a href=../../../movies/$year/$month/$movie>full-size</a>" >> $html
+	    echo "</td>" >> $html
+	    num=$((num+1))
+	done
+	
+	echo -e "</tr>\n" >> $html
+	echo -e "</table>\n" >> $html
+	echo -e "</center>\n</body>\n</html>" >> $html
+    fi
+    echo "done"
+}
+
+
+year(){
+    if [ -z "$START_YEAR" ]; then
+	echo "err: bad usage"
+	return -1
+    fi
+
+    mdir=$ABSMEDIADIR/$START_YEAR
+    gdir=$ABSGALLERYDIR/$START_YEAR
+    echo mdir: $mdir
+    echo gdir: $gdir
+
+    if [ ! -d "$mdir" ]; then
+	echo "err: year doesn't exist"
+	return 0
+    fi
+
+    if [ -n "$START_MONTH" ]; then
+	title=`get_title $mdir/$START_MONTH`
+	go="month_$MODE $mdir/$START_MONTH \"$title\""
+	echo $go
+	eval $go
+	return 0
+    fi
+    
+    for d in $mdir/*; do
+	#echo d: $d
+	title=`get_title $d`
+	#echo $title
+	go="month_$MODE $d \"$title\""
+	echo $go
+	eval $go
+    done
+
+}
+
+
+
+#--------------------
+for x in $argv; do
+    opt=(`echo $x | awk -F = '{print $1 " " $2}'`)
+    case "$opt[1]" in
+	--wwwroot)
+	    WWWROOT=$opt[2]
+	    ;;
+	--mediaroot)
+	    MEDIAROOT=$opt[2]
+	    ;;
+	--photodir)
+	    PHOTODIR=$opt[2]
+	    ;;
+	--moviedir)
+	    MOVIEDIR=$opt[2]
+	    ;;
+	--gallerydir)
+	    GALLERYDIR=$opt[2]
+	    ;;
+	--photos)
+	    MODE=PHOTO
+	    ;;
+	--movies)
+	    MODE=MOVIE
+	    ;;
+	--year)
+	    START_YEAR=$opt[2]
+	    ;;
+	--month)
+	    START_MONTH=$opt[2]
+	    ;;
+	--test)
+	    TEST=1
+	    ;;
+	*)
+	    echo "error: bad usage"
+	    usage
+	    exit 1
+    esac
+done
+
+
+temp=`eval echo \\$${MODE}DIR`
+ABSGALLERYDIR=$WWWROOT/$temp/$GALLERYDIR
+ABSMEDIADIR=$MEDIAROOT/$temp
+
+echo "WWWROOT=$WWWROOT"
+echo "MEDIAROOT=$MEDIAROOT"
+echo "PHOTODIR=$PHOTODIR"
+echo "MOVIEDIR=$MOVIEDIR"
+echo "PHOTOROOT=$PHOTOROOT"
+echo "MOVIEROOT=$MOVIEROOT"
+echo "GALLERYDIR=$GALLERYDIR"
+echo "ABSMEDIADIR=$ABSMEDIADIR"
+echo "ABSGALLERYDIR=$ABSGALLERYDIR"
+echo "MODE=$MODE"
+echo "TEST=$TEST"
+echo "START_YEAR=$START_YEAR"
+echo "START_MONTH=$START_MONTH"
+
+#if [ -n "$START_YEAR" ]; then
+#    echo "single year mode"
+#    go="year $START_YEAR"
+
+#elif [ -n "$START_MONTH" ]; then
+#    echo "single month mode"
+
+    #cd $START_MONTH
+    #year=`pwd`
+    #START_MONTH=`basename $year`
+    #year=`cd .. && pwd`
+    #year=`basename $year`
+    #cd ..
+    #echo $year
+    #echo $START_MONTH
+    #title=`get_title $START_MONTH`
+    #echo $title
+    #go="month $START_MONTH \"$title\""
+
+#else
+#    echo "multi-year mode"
+#    
+#fi
+
+go="year"
+
+echo $go
+echo "---------------"
+eval $go
+
+exit 0

@@ -1,0 +1,167 @@
+#!/usr/bin/env python3
+"""
+oggtagger
+
+this program (re)taggs ogg files with lower-case letters, optionally adding
+new tags.
+
+
+usage: oggtagger [OPTIONS] [FILES]
+
+  --dry-run            Just print what would be done.
+
+  --verbose            Extra debug output
+
+  --tags=[tag=val,...] Specify a comma delimited list of tag=val pairs.  The
+                       special value `%inc:N%` inserts an incrementing number,
+                       starting w/ N.  A value of `%copy:tag%` inserts a new
+                       tag w/ value of specified tag.  A value of `%remove%`
+                       causes the specified tag to be removed entirely.
+
+  ex: oggtagger --tags=date=2007 *.ogg
+
+  ex: oggtagger --tags=date=2005,oldtracknumber=%copy:tracknumber%,tracknumber=%inc:1% *.ogg
+"""
+
+import os.path
+import getopt
+import subprocess
+import sys
+import types
+
+
+def vprint(*kw):
+    """no-op debug print function.  to enable these print statements, set vprint =
+    print
+
+    """
+    pass
+
+
+def usage(message=None):
+    """
+    displays the usage message (program's doc string) along with an optional
+    error message.
+    """
+    if message:
+        print("error: %s" % message)
+    print(__doc__.strip())
+
+
+#------------------------------ main program ------------------------------#
+
+dry_run = False
+tags_to_add = {}
+tags_to_remove = []
+tags_to_copy = {}
+tags_to_inc = {}
+
+# this is going to get initialized w/ any previously existing tags in
+# the output file, then operated on, file by file.
+tags = {}
+
+
+# parse arguments
+try:
+    opts, args = getopt.gnu_getopt(sys.argv[1:], '', ['dry-run', 'verbose', 'tags='])
+
+    for flag, arg in opts:
+        if flag == "--dry-run":
+            dry_run = True
+        elif flag == "--verbose":
+            vprint = print
+        elif flag == "--tags":
+            for x in arg.split(','):
+                t, v = x.split('=')
+                tags[t] = v
+    
+    if not args:
+        raise Exception("invalid usage")
+    
+except Exception as e:
+    usage(e)
+    sys.exit(1)
+
+
+
+vprint("args:", args)
+
+# look for %remove% and %copy% so we can ensure 1) that removals
+# happen last, and 2) copy strings don't get overwritten when reading
+# input from existing tags.
+for x in tags:
+    if tags[x] == "%remove%":
+        tags_to_remove.append(x)
+    elif tags[x].find("%copy:") != -1:
+        # NOTE: we store this as a triplet (before, copy, after) so
+        #       users can provide text prior to or after the copied
+        #       portion of a tag
+        tags_to_copy[x] = tags[x].split("%")
+        tags_to_copy[x][1] = tags_to_copy[x][1].lstrip("%copy:")
+    elif tags[x].find("%inc:") != -1:
+        tags_to_inc[x] = tags[x].split("%")
+        tags_to_inc[x][1] = tags_to_inc[x][1].lstrip("%inc:")
+    else:
+        # plain old add/overwrite
+        tags_to_add[x] = tags[x]
+
+vprint("tags_to_add:", tags_to_add)
+vprint("tags_to_remove:", tags_to_remove)
+vprint("tags_to_copy:", tags_to_copy)
+vprint("tags_to_inc:", tags_to_inc)
+
+for x in args:
+    print("---\nfilename:", x)
+    
+    # initialize tags w/ existing tags
+    tags.clear()
+    p = subprocess.Popen(["vorbiscomment", "-l", x],
+                         stdout=subprocess.PIPE)
+    buf = p.communicate()[0].decode()
+    for y in buf.strip().split('\n'):
+        t, v = y.lower().split('=')
+        tags[t] = v
+    vprint("tags (original):", tags)
+
+    # do simple additions
+    for t in tags_to_add:
+        tags[t] = tags_to_add[t]
+    
+    # do copies
+    for t in tags_to_copy:
+        # use a copy so we don't modify tags_to_copy inplace
+        v = tags_to_copy[t][:]
+        v[1] = tags[v[1]]
+        tags[t] = "".join(v)
+
+    # do increments
+    for t in tags_to_inc:
+        # do NOT use a copy, we DO want to increment in place
+        v = tags_to_inc[t]
+        tags[t] = "".join(v)
+        v[1] = str(int(v[1])+1)
+    
+    # do removals
+    for t in tags_to_remove:
+        try:
+            del tags[t]
+        except:
+            pass
+
+    # write the new tags to file
+    vprint("tags (new):", tags)
+    buf = []
+    for t in tags:
+        buf.append("=".join([t, tags[t]]))
+    buf = '\n'.join(buf)
+    print(buf)
+
+    if not dry_run:
+        p = subprocess.Popen(["vorbiscomment", "-w", x],
+                             stdin=subprocess.PIPE)
+        temp = p.communicate(buf.encode())
+        vprint(temp)
+
+    # profit, jk
+    
+sys.exit(0)

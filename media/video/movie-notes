@@ -1,0 +1,90 @@
+To download dv from tape, splitting scenes and embedding timestamps:
+
+# dvgrab -autosplit -timestamp -size 0 -csize 0 -cmincutsize 0 -i
+
+Split into 2GB files:
+
+# dvgrab -size 2048 -csize 0 -cmincutsize 0 -i
+
+
+To encode high quality MPEG4 from dv:
+
+# ffmpeg -i foo009.dv -v 1 -b 2048k -ab 192k -vcodec mpeg4 -mbd 2 -aic -g300 -pass 1/2 foo0009-2.mp4 
+
+
+To transcode Flip's MPEG4/Xvid to standard MPEG4:
+
+# ffmpeg -i foo.avi -v1 -b 2048k -ab 192k -vcodec mpeg4 -mbd 2 -aic -g300 -pass 1/2 foo-flip.mp4
+
+
+To grab the first frame as a small JPEG, w/out messing with aspect ratio:
+
+# ffmpeg -i foo.mp4 -vframes 1 foo%d.jpg
+# convert -size 120x120 foo1.jpg -resize 120x120 +profile "*" foo1.jpg
+
+To create a DVD from an ISO
+
+# growisofs -dvd-compat -Z /dev/sr1=foo.iso
+
+
+To create a DVD ISO from XML and files
+
+# dvdauthor -i dirname -x xmlfile.xml
+
+
+
+To create video appropriate for our blackberries
+
+# ffmpeg -i whatever.mp4 -v 1 -b 30k -ab 12k -vcodec mpeg4 -acodec libfaac -mbd 2 -aic -g300 -r 10 -ar 8000 -s qcif whatever.3pg
+
+not quite working...
+
+Opimal Settings for 8800
+
+vid format:    MPEG4
+vid extension: .avi
+res (4:3):     240x180
+res (16:9):    320x180
+vid bitrate:   400 kbps
+vid fps:       24
+
+audio format:  MP3
+audio bitrate: 128 kbps
+sampe rate:    44 khz
+channels:      2 (stereo)
+
+ffmpeg -i whatever.mp4 -v 1 -vcodec mpeg4 -s 320x180 -aspect 16:9 -b 400k -r 24 -acodec libfaac -ab 128k -ar 44000 -ac 2 whatever.3gp
+
+
+----------------------------------------
+vlc -V image --image-out-format jpeg --image-out-ratio 200 --image-out-prefix xxxx 2007-12-25-vid00022.avi
+
+
+
+
+
+bin/sh /usr/share/kino/scripts/exports/ffmpeg_mp4_dual.sh ntsc 18.618619 0 mp6_-_ /tmp/kino.VAOBj3 1 16:9
+
+
+ffmpeg -f dv -i pipe: -pass 1 -passlogfile mp6_-_ -g 300 -ildct 1 -ilme 1 -aspect 16:9 -b 2048000 -ab 192000 -title  -author  -comment  -copyright  -y mp6_-_.mp4
+
+ffmpeg -f dv -i pipe: -pass 2 -passlogfile mp6_-_ -g 300 -mbd 2 -cmp 2 -subcmp 2 -mv4 1 -ildct 1 -ilme 1 -aspect 16:9 -b 2048000 -ab 192000 -title  -author  -comment  -copyright  -y mp6_-_.mp4
+
+
+
+
+To convert 3gp to mpeg2:
+
+ffmpeg -i foo.3gp 
+
+ffmpeg -i foo.3gp -f ac3 -ac 2 -ab 192k  -ar 48000 foo.ac3
+ffmpeg -i foo.3gp -f mpeg2video -maxrate 8000k foo.m2v
+mplex -f 8 -o foo.mpeg foo.m2v foo.ac3
+
+
+tompeg2(){
+    ffmpeg -i $1 -f ac3 -ac 2 -ab 192k  -ar 48000 foo.ac3 &&
+    ffmpeg -i $1 -s ntsc -r ntsc -an -target dvd -f mpeg2video -maxrate 8000k -deinterlace foo.m2v &&
+    mplex -f 8 -o $2 foo.m2v foo.ac3
+    rm -f foo.ac3 foo.m2v
+}
