@@ -47,10 +47,12 @@ usage: namestamper [OPTIONS] [FILES]
 #
 
 
-import os
 import getopt
-import sys
+import math
+import os
 import re
+import sys
+import time
 
 
 def vprint(*kw):
@@ -108,19 +110,54 @@ vprint("args:", args)
 #        NNNN or something?)...  Then we have to translate that whole mess into
 #        a regexp pattern.
 #
-rex = re.compile("^(?P<year>[0-9][0-9][0-9][0-9]).(?P<month>[0-9][0-9]).(?P<day>[0-9][0-9])_(?P<hour>[0-9][0-9])-(?P<minute>[0-9][0-9])-(?P<second>[0-9][0-9]).(?P<ext>[0-9a-zA-Z]+)$")
+pat="^(?P<year>[0-9][0-9][0-9][0-9])\.(?P<month>[0-9][0-9])\.(?P<day>[0-9][0-9])_(?P<hour>[0-9][0-9])-(?P<minute>[0-9][0-9])-(?P<second>[0-9][0-9]\.?[0-9]*)\.(?P<ext>[0-9a-zA-Z]+)$"
+rex = re.compile(pat)
 vprint("rex:", rex)
 
 # ok, go
 for p in args:
+    # parse time info from filename
     f = os.path.basename(p)
-    # pull time info from filename
     vprint("filename:", f)
     res = rex.search(f)
+    if not res:
+        print("ERROR:", p, "did not match timestamp pattern:", pat)
+        sys.exit(1)
     vprint("res:", res)
     vprint("groups:", res.groupdict())
 
+    # string-to-number type conversion
+    #
+    # NOTE: We make second an int like everything else, because mktime doesn't
+    #       support floating point values for second, despite returning a
+    #       float.  We'll add the decimal part back on the final timestamp.
+    #
+    year = int(res.group("year"))
+    month = int(res.group("month"))
+    day = int(res.group("day"))
+    hour = int(res.group("hour"))
+    minute = int(res.group("minute"))
+    second_f, second = math.modf(float(res.group("second")))
+    second = int(second)
+
+    # create struct_time
+    #
+    # NOTE: We use -1 here for dst to as mktime to decide for us.  This will
+    #       usually be correct, but I'm sure we can come up with oddball
+    #       scenarios where it's wrong.
+    #
+    tm = time.struct_time((year, month, day, hour, minute, second,
+                           0, 0, -1))
+    vprint("tm:", tm)
+
     # get seconds since the epoch for specified time
+    #
+    # NOTE: As noted above, our regexp pattern and type conversion support
+    #       floating point seconds, but mktime() does not.  We'll add the
+    #       floating point piece back on at the end.
+    #
+    t = time.mktime(tm) + second_f
+    vprint("t:", t)
 
     # change mtime
     
