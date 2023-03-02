@@ -78,6 +78,7 @@ def usage(message=None):
 
 # parse arguments
 dry_run = False
+verbose = False
 
 try:
     opts, args = getopt.gnu_getopt(sys.argv[1:], '', ['dry-run', 'verbose'])
@@ -86,6 +87,7 @@ try:
         if flag == "--dry-run":
             dry_run = True
         elif flag == "--verbose":
+            verbose = True
             vprint = print
     
     if not args:
@@ -123,8 +125,8 @@ for p in args:
     if not res:
         print("ERROR:", p, "did not match timestamp pattern:", pat)
         sys.exit(1)
-    vprint("res:", res)
-    vprint("groups:", res.groupdict())
+    #vprint("res:", res)
+    #vprint("groups:", res.groupdict())
 
     # string-to-number type conversion
     #
@@ -160,10 +162,11 @@ for p in args:
     vprint("t:", t)
 
     # change mtime
-    
-    
-    #if not dry_run:
-    #    # update stats
-        
+    if not dry_run:
+        #if verbose:
+        #    print("old stats:", os.stat(p))
+        os.utime(p, times=(t, t))
+        if verbose:
+            print("new timestamp:", time.ctime(os.stat(p).st_mtime))
 
 sys.exit(0)
