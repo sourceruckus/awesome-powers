@@ -2,8 +2,7 @@
 """
 oggtagger
 
-this program (re)taggs ogg files with lower-case letters, optionally adding
-new tags.
+This program (re)tags groups of ogg files however you'd like.
 
 
 usage: oggtagger [OPTIONS] [FILES]
@@ -17,6 +16,15 @@ usage: oggtagger [OPTIONS] [FILES]
                        starting w/ N.  A value of `%copy:tag%` inserts a new
                        tag w/ value of specified tag.  A value of `%remove%`
                        causes the specified tag to be removed entirely.
+
+  --upper              (Re)Apply all tags in all uppercase letters.
+
+  --lower              (Re)Apply all tags in all lowercase letters.
+
+  --audiobook          Key off of "tracknumber" and "discnumber" tags, change
+                       "title" to "Dno Tno" (e.g., D01 T01), add a
+                       genre=audiobook tag, and rename file to simply
+                       "discnumber-tracknumber.ogg".
 
   ex: oggtagger --tags=date=2007 *.ogg
 
@@ -51,6 +59,8 @@ def usage(message=None):
 #------------------------------ main program ------------------------------#
 
 dry_run = False
+casechange = None
+audiobook = False
 tags_to_add = {}
 tags_to_remove = []
 tags_to_copy = {}
@@ -58,12 +68,15 @@ tags_to_inc = {}
 
 # this is going to get initialized w/ any previously existing tags in
 # the output file, then operated on, file by file.
-tags = {}
-
+#
+# NOTE: This is case insensitive because vorbis tags are case insensitive.
+#
+from requests.structures import CaseInsensitiveDict
+tags = CaseInsensitiveDict()
 
 # parse arguments
 try:
-    opts, args = getopt.gnu_getopt(sys.argv[1:], '', ['dry-run', 'verbose', 'tags='])
+    opts, args = getopt.gnu_getopt(sys.argv[1:], '', ['dry-run', 'verbose', 'tags=', 'upper', 'lower', 'audiobook'])
 
     for flag, arg in opts:
         if flag == "--dry-run":
@@ -74,6 +87,12 @@ try:
             for x in arg.split(','):
                 t, v = x.split('=')
                 tags[t] = v
+        elif flag == '--upper':
+            casechange = 'upper'
+        elif flag == '--lower':
+            casechange = 'lower'
+        elif flag == '--audiobook':
+            audiobook = True
     
     if not args:
         raise Exception("invalid usage")
@@ -85,6 +104,9 @@ except Exception as e:
 
 
 vprint("args:", args)
+vprint("dry_run:", dry_run)
+vprint("casechange:", casechange)
+vprint("audiobook:", audiobook)
 
 # look for %remove% and %copy% so we can ensure 1) that removals
 # happen last, and 2) copy strings don't get overwritten when reading
@@ -119,7 +141,13 @@ for x in args:
                          stdout=subprocess.PIPE)
     buf = p.communicate()[0].decode()
     for y in buf.strip().split('\n'):
-        t, v = y.lower().split('=')
+        if casechange == 'upper':
+            tmp = y.upper()
+        elif casechange == 'lower':
+            tmp = y.lower()
+        else:
+            tmp = y
+        t, v = tmp.split('=')
         tags[t] = v
     vprint("tags (original):", tags)
 
@@ -148,6 +176,22 @@ for x in args:
         except:
             pass
 
+    # do audiobook processing
+    if audiobook:
+        # this requires discnumber and tracknumber, so check for them.
+        try:
+            dno = tags['DISCNUMBER']
+            tno = tags['TRACKNUMBER']
+            if dno == '0':
+                raise Exception("DISCNUMBER cannot be 0")
+        except Exception as e:
+            print("ERROR: DISCNUMBER and TRACKNUMBER are required for --audiobook processing:", e)
+            sys.exit(1)
+
+        tags['TITLE'] = 'D{} T{}'.format(dno.zfill(2), tno.zfill(2))
+        tags['GENRE'] = 'audiobook'
+        newname = '{}-{}.ogg'.format(dno.zfill(2), tno.zfill(2))
+
     # write the new tags to file
     vprint("tags (new):", tags)
     buf = []
@@ -156,12 +200,15 @@ for x in args:
     buf = '\n'.join(buf)
     print(buf)
 
+    if audiobook:
+        vprint("would rename to:", newname)
+
     if not dry_run:
         p = subprocess.Popen(["vorbiscomment", "-w", x],
                              stdin=subprocess.PIPE)
         temp = p.communicate(buf.encode())
         vprint(temp)
+        if audiobook:
+            os.rename(x, newname)
 
-    # profit, jk
-    
 sys.exit(0)
