@@ -190,7 +190,7 @@ for x in args:
 
         tags['TITLE'] = 'D{} T{}'.format(dno.zfill(2), tno.zfill(2))
         tags['GENRE'] = 'audiobook'
-        newname = '{}-{}.ogg'.format(dno.zfill(2), tno.zfill(2))
+        newname = '{}-{} - {}.ogg'.format(dno.zfill(2), tno.zfill(2), tags['ALBUM'])
 
     # write the new tags to file
     vprint("tags (new):", tags)
@@ -201,7 +201,7 @@ for x in args:
     print(buf)
 
     if audiobook:
-        vprint("would rename to:", newname)
+        print("rename to:", newname)
 
     if not dry_run:
         p = subprocess.Popen(["vorbiscomment", "-w", x],
