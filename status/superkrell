@@ -14,12 +14,13 @@ nodes_dom0="frodo sam merry gandalf"
 nodes_srv="srv-files srv-net srv-auth srv-www srv-router1 srv-router2 srv-files2"
 nodes_dev="aragorn legolas gimli boromir jammydev"
 nodes_home="gandalf elrond galadriel glorfindel haldir"
-nodes_nautilus="coresrv1 coresrv2 netsrv1 netsrv2 netsrv3 shiphouse nautilusfs capture rovnav argusgui hercgui copynuc rrnuc logger datalabfour datalabfive datarec dataxform netutil alleycat alleyrat de-nuc lilhercgui blame-nuc"
+nodes_nautilus="coresrv1 coresrv2 netsrv1 nautilusfs copynuc dataproc"
+nodes_nautilus_all="coresrv1 coresrv2 netsrv1 netsrv2 netsrv3 shiphouse nautilusfs capture rovnav argusgui hercgui copynuc rrnuc logger datalabfour datalabfive datarec dataxform netutil alleycat alleyrat de-nuc lilhercgui blame-nuc dataproc datalabsix"
 
 
 usage()
 {
-    echo "usage: $(basename $0) [default|dom0|srv|dev|home|nautilus]"
+    echo "usage: $(basename $0) [default|dom0|srv|dev|home|nautilus|nautilus_all]"
 }
 
 
@@ -40,6 +41,9 @@ while (($#)); do
             ;;
         nautilus)
             nodes+=" $nodes_nautilus"
+            ;;
+        nautilus_all)
+            nodes+=" $nodes_nautilus_all"
             ;;
         default)
             nodes+=" $nodes_default"
