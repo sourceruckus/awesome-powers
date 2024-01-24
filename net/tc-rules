@@ -106,29 +106,29 @@ tc qdisc add dev $DEV parent 1:30 handle 30: sfq perturb 10
 #
 # NOTE: We do this using the meta(priority) field to make the rule easier.
 #
-#tc filter add dev $DEV parent 1: basic \
-#   match 'meta(priority eq 6)' classid 1:10
+tc filter add dev $DEV parent 1: basic \
+   match 'meta(priority eq 6)' classid 1:10
 
 # NOTE: check /etc/protocols for protocol numbers
 #
 # ICMP (ip protocol 1) in the interactive class
-#tc filter add dev ${DEV} parent 1: protocol ip prio 11 u32 \
-#   match ip protocol 1 0xff flowid 1:10
+tc filter add dev ${DEV} parent 1: protocol ip prio 11 u32 \
+   match ip protocol 1 0xff flowid 1:10
 
 # DNS (udp is protocol 17 or 0x11)
-#tc filter add dev ${DEV} parent 1: protocol ip prio 12 u32 \
-#   match ip protocol 17 0xff \
-#   match ip dport 53 0xffff \
-#   flowid 1:10
+tc filter add dev ${DEV} parent 1: protocol ip prio 12 u32 \
+   match ip protocol 17 0xff \
+   match ip dport 53 0xffff \
+   flowid 1:10
 
 # To speed up downloads while an upload is going on, put ACK packets in the
 # HIGH priority class
-#tc filter add dev ${DEV} parent 1: protocol ip prio 13 u32 \
-#   match ip protocol 6 0xff \
-#   match u8 0x05 0x0f at 0 \
-#   match u16 0x0000 0xffc0 at 2 \
-#   match u8 0x10 0xff at 33 \
-#   flowid 1:10
+tc filter add dev ${DEV} parent 1: protocol ip prio 13 u32 \
+   match ip protocol 6 0xff \
+   match u8 0x05 0x0f at 0 \
+   match u16 0x0000 0xffc0 at 2 \
+   match u8 0x10 0xff at 33 \
+   flowid 1:10
 
 # Anything "marked" as "10" by iptables goes into the HIGH priority class (see
 # /etc/iptables/rules.v4).
