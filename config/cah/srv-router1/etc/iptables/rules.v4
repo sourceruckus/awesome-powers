@@ -63,7 +63,7 @@ COMMIT
 -A PREROUTING -m mac --mac-source 80:5e:c0:c2:c1:5c -j MARK --set-mark 10
 # phone-office
 -A PREROUTING -m mac --mac-source 80:5e:c0:9f:96:f4 -j MARK --set-mark 10
-#phone-pharmacy
+# phone-pharmacy
 -A PREROUTING -m mac --mac-source 80:5e:c0:c2:c1:3b -j MARK --set-mark 10
 # phone-breakroom
 -A PREROUTING -m mac --mac-source 80:5e:0c:07:21:d8 -j MARK --set-mark 10
@@ -252,17 +252,31 @@ COMMIT
 # only work if both directions are allowed.
 -A FORWARD -i eth0.30 -o eth0.40 -j ACCEPT
 #
-# instrument.cah can only to to internet and infrastructure.cah (CONFIRMED)
+# instrument.cah can only get to internet and infrastructure.cah (CONFIRMED)
 -A FORWARD -i eth0.40 -o eth0.2 -j ACCEPT
 -A FORWARD -i eth0.40 -o eth0.3 -j ACCEPT
 -A FORWARD -i eth0.40 -o eth0.20 -j ACCEPT
 -A FORWARD -i eth0.40 -o wg-cah -j ACCEPT
+# allow frontdesk-printer's wifi interface onto the workstation network
+-A FORWARD -i eth0.40 -o eth0.30 -m mac --mac-source 44:1c:a8:85:3e:fa -j ACCEPT
+# allow the pacs system to get to workstation
+-A FORWARD -i eth0.40 -o eth0.30 -m mac --mac-source 44:8e:12:06:ff:1e -j ACCEPT
+# office laptops/workstations connected via wifi will need access as well
+#
+# witherwings
+-A FORWARD -i eth0.40 -o eth0.30 -m mac --mac-source f0:d4:15:cd:cb:9d -j ACCEPT
+# fawkes
+-A FORWARD -i eth0.40 -o eth0.30 -m mac --mac-source 30:05:05:d9:4b:f3 -j ACCEPT
+# fang
+-A FORWARD -i eth0.40 -o eth0.30 -m mac --mac-source 3c:9c:0f:fa:ef:88 -j ACCEPT
+# norbert (because it's on wifi)
+-A FORWARD -i eth0.40 -o eth0.30 -m mac --mac-source 40:74:e0:3d:56:c1 -j ACCEPT
+# dental laptop
+#-A FORWARD -i eth0.40 -o eth0.30 -m mac --mac-source ____________ -j ACCEPT
+#
 # jail vlan can only go to internet
 -A FORWARD -i eth0.99 -o eth0.2 -j ACCEPT
 -A FORWARD -i eth0.99 -o eth0.3 -j ACCEPT
-#
-# allow frontdesk-printer's wifi interface onto the workstation network
--A FORWARD -i eth0.40 -o eth0.30 -m mac --mac-source 44:1c:a8:85:3e:fa -j ACCEPT
 #
 # allow wireguard interface to forward everywhere
 -A FORWARD -i wg-cah -j ACCEPT
