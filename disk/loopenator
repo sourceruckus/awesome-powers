@@ -1,0 +1,86 @@
+#!/bin/bash
+#
+# Awesome Powers - scripts & config files of pure awesomeness
+#
+# Copyright 2018-2022 Michael D Labriola <veggiemike@sourceruckus.org>
+#
+# Licensed under the GPLv3. See the file COPYING for details. 
+#
+# This script configures loopback devices according to a config file.
+#
+
+# debug echo - only prints if enabled
+decho()
+{
+    if [ -n "$opt_verbose" ]; then
+        echo "$*"
+    fi
+}
+
+
+start()
+{
+    for dev in $devlist; do
+        go="losetup /dev/$dev ${!dev}"
+        decho $go
+        eval $go || badness=1
+    done
+}
+
+
+stop()
+{
+    for dev in $devlist; do
+        go="losetup -d /dev/$dev"
+        decho $go
+        eval $go || badness=1
+    done
+}
+
+
+status()
+{
+    echo "Configured devices: $devlist"
+    echo
+    echo "Current loop devices:"
+    losetup
+}
+
+
+# parse our config
+if [ -f $0.conf ]; then
+    . $0.conf
+else
+    echo "ERROR: missing config file $0.conf"
+    exit 1
+fi
+
+case $1 in
+    start)
+        start
+        [ -n "$opt_verbose" ] && status
+        ;;
+    stop)
+        stop
+        [ -n "$opt_verbose" ] && status
+        ;;
+    restart)
+        stop
+        sleep 1
+        start
+        [ -n "$opt_verbose" ] && status
+        ;;
+    status)
+        status
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|status}"
+        exit 1
+        ;;
+esac
+
+if [ -n "$badness" ]; then
+    exit 1
+else
+    exit 0
+fi

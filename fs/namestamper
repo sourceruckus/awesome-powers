@@ -1,0 +1,172 @@
+#!/usr/bin/env python3
+"""
+namestamper
+
+this program modifies a file's timestamp to match the time in its filename.
+
+usage: namestamper [OPTIONS] [FILES]
+
+  --dry-run      Just print what would be done.
+
+  --verbose      Extra debug output
+
+  --pattern      FIXME: not implemented yet, assumes "YYYY.MM.DD_HH-MM-SS.ext"
+
+  ex: namestamper --dry-run *.ogg
+"""
+
+
+# starting this to help fix timestamps on my old movies, which were originally
+# date/time of import off of dv tape, with video timestamps in the filenames.
+# looks like this is all movies up to the first 4 .mp4 files in 2012/08 (must
+# have used dvgrab on the new camera once and then realized it was eaiser to
+# pop the card).
+#
+# likewise, my original digital camera used serial to pull files off of
+# internal memory, and the timestamps are time of import with the correct photo
+# timestamp in the filename (double check this).
+#
+# FIXME: old dvgrab files were YYYY.MM.DD_HH-MM-SS.ext, that's movies up to and
+#        including June 2012.  actually, there's a couple like that in 2012/08
+#        also, the first couple .mp4 files.
+#
+#        Starting with the majoriy of 2012/08, the format became
+#        YYYY-MM-DD-HH-MM-SS-N.ext, where the N was usually 1 unless we had
+#        multiple files with the same exact timestamp.
+#
+#        phone-beth was YYYY-MM-DD-HH-MM-SS-N.ext also, but 2012-2013 was
+#        .3gp...  same for phone-mike-old.  i don't know if 3gp files will play
+#        on anything i care about now.  Actually, i just uploaded a 3gp w/
+#        bogus timestamp and google photos corrected it... so it must be
+#        embedded in the video somewhere.  it also plays fine.
+#
+#        old photos were YYYY-MM-DD-stringNN.ext w/out any actual timestamp.
+#        :-/ Unil 2002/11 when i got the mavica which preserved appropriate
+#        timestamps in the files.  Name format changed again mid-december 2009
+#        (christmas camera?) to include hh-mm-ss in the filename.
+#
+
+
+import getopt
+import math
+import os
+import re
+import sys
+import time
+
+
+def vprint(*kw):
+    """no-op debug print function.  to enable these print statements, set vprint =
+    print
+
+    """
+    pass
+
+
+def usage(message=None):
+    """
+    displays the usage message (program's doc string) along with an optional
+    error message.
+    """
+    if message:
+        print("error: %s" % message)
+    print(__doc__.strip())
+
+
+#------------------------------ main program ------------------------------#
+
+
+# parse arguments
+dry_run = False
+verbose = False
+
+try:
+    opts, args = getopt.gnu_getopt(sys.argv[1:], '', ['dry-run', 'verbose'])
+
+    for flag, arg in opts:
+        if flag == "--dry-run":
+            dry_run = True
+        elif flag == "--verbose":
+            verbose = True
+            vprint = print
+    
+    if not args:
+        raise Exception("invalid usage")
+    
+except Exception as e:
+    usage(e)
+    sys.exit(1)
+
+
+
+vprint("args:", args)
+
+# YYYY.MM.DD_HH-MM-SS.ext
+#
+# FIXME: jeez, taking this pattern as a cli flag is going to be complicated...
+#        We'll have to take it in, and parse it to figure out year, month, day,
+#        hour, minutes, seconds...  and then there's 12/24 time (shall we just
+#        assume 24hr time for everything?) and seconds/nanoseconds (maybe just
+#        allow SS to be a float? or add SS.NN or something? probably better to
+#        allow for SS.SS) and potential sequence number (maybe that should be
+#        NNNN or something?)...  Then we have to translate that whole mess into
+#        a regexp pattern.
+#
+pat="^(?P<year>[0-9][0-9][0-9][0-9])\.(?P<month>[0-9][0-9])\.(?P<day>[0-9][0-9])_(?P<hour>[0-9][0-9])-(?P<minute>[0-9][0-9])-(?P<second>[0-9][0-9]\.?[0-9]*)\.(?P<ext>[0-9a-zA-Z]+)$"
+rex = re.compile(pat)
+vprint("rex:", rex)
+
+# ok, go
+for p in args:
+    # parse time info from filename
+    f = os.path.basename(p)
+    vprint("filename:", f)
+    res = rex.search(f)
+    if not res:
+        print("ERROR:", p, "did not match timestamp pattern:", pat)
+        sys.exit(1)
+    #vprint("res:", res)
+    #vprint("groups:", res.groupdict())
+
+    # string-to-number type conversion
+    #
+    # NOTE: We make second an int like everything else, because mktime doesn't
+    #       support floating point values for second, despite returning a
+    #       float.  We'll add the decimal part back on the final timestamp.
+    #
+    year = int(res.group("year"))
+    month = int(res.group("month"))
+    day = int(res.group("day"))
+    hour = int(res.group("hour"))
+    minute = int(res.group("minute"))
+    second_f, second = math.modf(float(res.group("second")))
+    second = int(second)
+
+    # create struct_time
+    #
+    # NOTE: We use -1 here for dst to as mktime to decide for us.  This will
+    #       usually be correct, but I'm sure we can come up with oddball
+    #       scenarios where it's wrong.
+    #
+    tm = time.struct_time((year, month, day, hour, minute, second,
+                           0, 0, -1))
+    vprint("tm:", tm)
+
+    # get seconds since the epoch for specified time
+    #
+    # NOTE: As noted above, our regexp pattern and type conversion support
+    #       floating point seconds, but mktime() does not.  We'll add the
+    #       floating point piece back on at the end.
+    #
+    t = time.mktime(tm) + second_f
+    vprint("t:", t)
+
+    # change mtime
+    if not dry_run:
+        #if verbose:
+        #    print("old stats:", os.stat(p))
+        os.utime(p, times=(t, t))
+        if verbose:
+            print("new timestamp:", time.ctime(os.stat(p).st_mtime))
+
+sys.exit(0)

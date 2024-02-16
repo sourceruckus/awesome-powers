@@ -1,0 +1,253 @@
+#!/usr/bin/env python3
+#
+# TODO: side-note, we should play around with replacing my original lame
+#       gallery code with something cool like nanogallery2.  looks like we've
+#       already got jQuery installed, so it shouldn't be too hard to
+#       setup... right?
+#
+import argparse
+import hashlib
+import os
+import shutil
+import stat
+import sys
+import time
+from pprint import pprint
+
+
+def vprint(*kw):
+    """no-op debug print function.  to enable these print statements, set vprint =
+    print
+
+    """
+    pass
+
+
+def vvprint(*kw):
+    """no-op verbose debug print function.  to enable these print statements, set
+    vvprint = print
+
+    """
+    pass
+
+
+def checksum(fname):
+    """return checksum of fname
+    """
+    hash1 = hashlib.sha256()
+    with open(fname, "rb") as f:
+        for block in iter(lambda: f.read(4096),b""):
+            hash1.update(block)
+    return hash1.hexdigest()
+
+
+prog = os.path.basename(sys.argv[0])
+
+desc="""\
+photo-sorter2, version 0.1
+(C) 2019 Michael D Labriola <michael.d.labriola@gmail.com>
+"""
+
+epi="""\
+example: {} -v --output-dir=/some/where --link right/here/*.jpg
+
+example: {} -v --output-dir=/some/where --move over/here/*.JPG
+
+example: {} -v --output-dir=/some/where --copy in/here/*.jpeg --extension=jpg
+
+example: {} -v --output-dir=/some/where in/here/*.jpg --no-nesting
+""".format(prog, prog, prog, prog)
+
+p = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                            prog=prog,
+                            description=desc,
+                            epilog=epi)
+
+p.add_argument("input_files", metavar="INPUT_FILES", nargs="+", help="Path to input files.")
+
+p.add_argument('-o', '--output-dir', metavar="DIR", required=True, help="Directory to use as base for output.")
+
+p.add_argument('-N', '--no-nesting', action='store_true', help="Don't nest output files.  By default, output files are placed in subdirectories of OUTPUT_DIR by year and month, based on file timestamps.  This flag disables that behavior, resulting in a flat directory of files.")
+
+p.add_argument('-R', '--no-rename', action='store_true', help="Don't rename output files.  By default, output files are renamed to YYYY-MM-DD-no.ext based on file timestamps.  This flag disables that behavior, but file will still get '-No' tacked into it if file already exists.")
+
+p.add_argument('-e', '--extension', metavar='EXT', help='File extension of output files.  By default, the file extension of the input files is re-used but as lowercase.')
+
+p.add_argument('-a', '--all', action='store_true', help='Include all files, even hidden files/dirs.  Default is to skip them.')
+
+# one and only one of the following options is required (actually, we treat as not required and set --copy as default)
+g = p.add_mutually_exclusive_group(required=False)
+g.add_argument('-m', '--move', action='store_true', help='Move input files to output dir instead of copying.')
+g.add_argument('-c', '--copy', action='store_true', help='Copy input files to output dir.  This is the default behavior.')
+g.add_argument('-l', '--link', action='store_true', help='Make hard links of input files in output dir instead of copying.')
+g.add_argument('-s', '--symlink', action='store_true', help='Make symbolic links of input files in output dir instead of copying.')
+
+p.add_argument('-n', '--dry-run', action="store_true", help="Don't really write anything, just go through the motions.")
+p.add_argument('-v', '--verbose', action='count', default=0,
+               help="""Be verbose.  Can be supplied multiple times for
+                    increased levels of verbosity.""")
+
+
+args = p.parse_args()
+
+if not args.no_nesting:
+    args.nesting = True
+else:
+    args.nesting = False
+
+if not args.no_rename:
+    args.rename = True
+else:
+    args.rename = False
+
+if not args.move and not args.copy and not args.link and not args.symlink:
+    args.copy = True
+
+if not args.rename and args.extension:
+    print("{}: error: --extension does nothing when combined with --no-rename".format(prog))
+    sys.exit(-1)
+
+if args.extension and not args.extension.startswith('.'):
+    print("{}: error: --extension must start with '.'".format(prog))
+    sys.exit(-1)
+
+if args.verbose > 0:
+    vprint = print
+if args.verbose > 1:
+    vvprint = print
+vvprint(args)
+
+
+# ok, go
+#
+# NOTE: Kinda dumb from a performance standpoint, but I want to do the actual
+#       work alphabetically so the user can have some sense of progression.
+#
+# NOTE: Could use 3rd party sortedcontainers.SortedList to do this in a single
+#       pass, but it looks to perform identically on my laptop and would
+#       require an extra library.  It is as simple as 'pip3 install
+#       sortedcontainers', but it feels nicer to not have any 3rd party deps at
+#       this point.
+#
+#from sortedcontainers import SortedList
+#sl = SortedList()
+usl = []
+for x in args.input_files:
+    if not os.path.isdir(x):
+        usl.append(x)
+        continue
+    for root, dirs, files in os.walk(x):
+        # skip "hidden" dirs
+        if not args.all and os.path.basename(root).startswith('.'):
+            vprint("skipping hidden dir:", root)
+            continue
+        # add all the files
+        for f in files:
+            # skip "hidden" files
+            if not args.all and f.startswith('.'):
+                vprint("skipping hidden file:", os.path.join(root, f))
+                continue
+            #sl.add(os.path.join(root, f))
+            usl.append(os.path.join(root, f))
+
+sl = sorted(usl)
+
+# this array is just so we can keep track of what dirs would be created, so
+# that we can have realistic dry-run output
+created_dirs = []
+
+for x in sl:
+    vvprint(x)
+    # get file timestamp stats
+    mtime = os.stat(x)[stat.ST_MTIME]
+    mt = time.localtime(mtime)
+    vvprint("mtime:", mtime, mt)
+    
+    # decide on output dir
+    if args.nesting:
+        odir = os.path.join(args.output_dir, time.strftime("%Y/%m", mt))
+    else:
+        odir = args.output_dir
+    vvprint("odir:", odir)
+    # create subdirs if needed
+    if not os.path.isdir(odir) and odir not in created_dirs:
+        vprint("creating dir", odir)
+        created_dirs.append(odir)
+        if not args.dry_run:
+            os.makedirs(odir)
+    
+    # decide on new filename (w/ potentialy new extension)
+    #
+    # NOTE: I would like to use ISO 8601, except then our output would be
+    #       invalid on FAT32, NTFS, and probably other filesystems (because of
+    #       the ':').  "%Y-%m-%dT%H:%M:%S%z"
+    #
+    #       I guess I'll just substitute '-' for ':'.
+    #
+    if args.rename:
+        # base name
+        fname = time.strftime("%Y-%m-%dT%H-%M-%S%z", mt)
+        fname += "-00"
+        # extension
+        if args.extension:
+            ext = args.extension
+        else:
+            ext = os.path.splitext(x)[-1].lower()
+        fname += ext
+    else:
+        fname = os.path.basename(x)
+    fname = os.path.join(odir, fname)
+    vvprint("fname:", fname)
+    
+    # check for existing files!
+    if os.path.exists(fname):
+        # check to see if its actually the same file already, in which case we can simply skip it
+        h1 = checksum(fname)
+        vvprint("h1:", h1)
+        h2 = checksum(x)
+        vvprint("h2:", h2)
+        if h1 == h2:
+            vprint("file already there, checksum confirmed, skipping:", fname)
+            continue
+ 
+    # otherwise, keep incrementing 'no' until there's no match
+    parts = list(os.path.splitext(fname))
+    vvprint("parts orig:", parts)
+    if args.rename:
+        # we've already added -00 to filename, rip it apart
+        parts.insert(-1, int(parts[0][parts[0].rfind('-')+1:]))
+        parts[0] = parts[0][:parts[0].rfind('-')]
+    else:
+        # insert imaginary 0 into parts array
+        parts.insert(-1, 0)
+    while os.path.exists(fname):
+        vprint("collision detected:", fname)
+        vvprint("parts:", parts)
+        parts[1]+=1
+        fname = parts[0] + '-' + str(parts[1]).rjust(2, '0') + parts[2]
+        vvprint("new fname:", fname)
+    
+    # move/link/copy to output dir
+    if args.move:
+        vprint("mv", x, "-->", fname)
+        if not args.dry_run:
+            os.rename(x, fname)
+            pass
+    elif args.link:
+        vprint("ln", x, "-->", fname)
+        if not args.dry_run:
+            os.link(x, fname)
+            pass
+    elif args.symlink:
+        vprint("ln -s", x, "-->", fname)
+        if not args.dry_run:
+            os.symlink(x, fname)
+            pass
+    elif args.copy:
+        vprint("cp", x, "-->", fname)
+        if not args.dry_run:
+            shutil.copy2(x, fname)
+            pass
+    else:
+        raise Exception("invalid mode?")
+    

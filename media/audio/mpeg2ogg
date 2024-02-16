@@ -1,0 +1,180 @@
+#!/usr/bin/env python
+# -*- mode: python -*-
+
+"""
+mpeg2ogg
+
+this program uses mplayer and oggenc to generate ogg vorbis files from mpeg
+files in a specified directory.
+
+
+usage: mpeg2ogg [OPTIONS] [DIR]
+
+  --tag-hint=[FORMAT] Specify a mapping of tagfields to strings in the mpeg
+                      file's filename.
+
+  --artist=[ARTIST]   Specify the value of the artist tag in the ogg file.
+  
+  --genre=[genre]     Specify the value of the genre tag in the ogg file.
+  
+  --date=[DATE]       Specify the value of the date tag in the ogg file.
+  
+  --album=[ALBUM]     Specify the value of the album tag in the ogg file.
+  
+  --track=[NUMBER]    Specify the value of the tracknumber tag in the ogg file.
+
+  ex: mpeg2ogg --tag-hint='%artist% - %album% - %track% - %title%.mp3' mp3dir
+"""
+
+import os.path
+import getopt
+import subprocess
+import sys
+import types
+
+
+def usage(message=None):
+    """
+    displays the usage message (program's doc string) along with an optional
+    error message.
+    """
+    if message:
+        print "error: %s" % message
+    print __doc__.strip()
+
+
+#------------------------------ main program ------------------------------#
+
+# parse arguments
+try:
+    opts, args = getopt.gnu_getopt(sys.argv[1:], '', ['tag-hint=',
+                                                      'artist=',
+                                                      'genre=',
+                                                      'date=',
+                                                      'album=',
+                                                      'track='])
+
+    tag_hint = None
+    tag_map = {}
+    wavdir = None
+    oggdir = None
+    
+    for flag, arg in opts:
+        if flag == "--tag-hint":
+            tag_hint = arg
+        elif flag == "--artist":
+            tag_map['artist'] = arg
+        elif flag == "--genre":
+            tag_map['genre'] = arg
+        elif flag == "--date":
+            tag_map['date'] = arg
+        elif flag == "--album":
+            tag_map['album'] = arg
+        elif flag == "--track":
+            tag_map['tracknumber'] = arg
+    
+    if len(args) != 1:
+        raise Exception("invalid usage")
+    
+except Exception, e:
+    usage(e)
+    sys.exit(1)
+
+mp3dir = args[0]
+
+if not wavdir:
+    wavdir = "%s.wav" % mp3dir
+
+if not oggdir:
+    oggdir = "%s.ogg" % mp3dir
+
+print "tag_hint:", tag_hint
+print "tag_map:", tag_map
+print "mp3dir:", mp3dir
+print "wavdir:", wavdir
+print "oggdir:", oggdir
+
+# ok, go
+try:
+    
+    for node, dirs, files in os.walk(mp3dir):
+        for x in files:
+            mp3file = os.path.join(node, x)
+            #print mp3file
+            basename = mp3file.split("%s%s" % (mp3dir, os.path.sep))[1]
+            temp = basename.split('.')[-1].lower()
+            if temp == 'mp3':
+                basename = '.'.join(basename.split('.')[:-1])
+            #print basename
+            wavfile = os.path.join(wavdir, "%s.wav" % basename).lower()
+            oggfile = os.path.join(oggdir, "%s.ogg" % basename).lower()
+            #print wavfile
+            #print oggfile
+            
+            if tag_hint:
+                hint = tag_hint.split(' - ')
+                temp = basename.split(' - ')
+                #print hint
+                #print temp
+                map = {}
+                if len(hint) != len(temp):
+                    err = "tag_hint mismatch: %s : %s" % (tag_hint, basename)
+                    raise Exception(err)
+                for i in range(len(hint)):
+                    map[hint[i]] = temp[i].lower()
+                #print map
+                for x in tag_map:
+                    map[x] = tag_map[x].lower()
+            #print map
+
+            # mpeg2wav
+            print "converting '%s' to '%s'" % (mp3file, wavfile)
+            if not os.path.isdir(wavdir):
+                os.makedirs(wavdir)
+            go = "mplayer -vc null -vo null -ao pcm:waveheader:fast:file='%s' '%s'" % (wavfile, mp3file)
+            print go
+            subprocess.check_call(go, shell=True)
+
+            # wav2ogg
+            if 'track' in map and 'title' in map:
+                oggfile = os.path.join(oggdir, "%s - %s.ogg" % (map['track'], map['title']))
+            print "converting '%s' to '%s'" % (wavfile, oggfile)
+            if not os.path.isdir(oggdir):
+                os.makedirs(oggdir)
+            go = "oggenc -q 6"
+            try:
+                go += " -a '%s'" % map['artist']
+            except:
+                pass
+            try:
+                go += " -G '%s'" % map['genre']
+            except:
+                pass
+            try:
+                go += " -d '%s'" % map['date']
+            except:
+                pass
+            try:
+                go += " -N '%s'" % map['track']
+            except:
+                pass
+            try:
+                go += " -t '%s'" % map['title']
+            except:
+                pass
+            try:
+                go += " -l '%s'" % map['album']
+            except:
+                pass
+            go += " -o '%s' '%s'" % (oggfile, wavfile)
+            print go
+            subprocess.check_call(go, shell=True)
+            
+        for x in dirs:
+            print "dir:", x
+    
+except Exception, e:
+    print "ERROR: %s" % e
+    sys.exit(-1)
+
+sys.exit(0)

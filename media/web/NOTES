@@ -1,0 +1,6 @@
+-*- mode: outline; mode: flyspell -*-
+
+* Installation
+
+** /var/www/html/.gallerycache has to be created and ownership/perms set so that the httpd deamon can write to it.
+
