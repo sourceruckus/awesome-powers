@@ -32,7 +32,7 @@
 #
 
 export DEV=eth0.2
-export UP_MB=20
-export DOWN_MB=100
+export UP_MBIT=20
+export DOWN_MBIT=100
 
 exec $(dirname $0)/tc-rules $*

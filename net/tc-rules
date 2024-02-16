@@ -17,16 +17,18 @@
 # https://tldp.org/HOWTO/html_single/Traffic-Control-HOWTO/
 # http://linux-ip.net/gl/tc-filters/tc-filters.html
 # https://wiki.debian.org/TrafficControl
+# https://robert.nowotniak.com/security/htb/
 #
-# I'm basically creating a High, Medium, and Low traffic queue to filter
-# traffic into for our uplink.  These 3 queues get bandwidth guarantees
-# decreasing from 80%, 50%, and 10% of our uplink bandwitdh (although lower
-# priority queues get to eat unused bandwidth from other queues), as well as
-# decreasing priority (well, the value goes up but smaller is higher).  The
-# downlink will just get rate-limited to around what our downlink bandwidth
-# speed is.
+# I'm basically creating High, Medium, and Low traffic queues to filter traffic
+# into for our uplink.  By default, these 3 queues get bandwidth guarantees of
+# 20%, 75%, and 5% of our uplink bandwitdh (although lower priority queues get
+# to eat unused bandwidth from other queues).  The downlink will just get
+# rate-limited to around what our downlink bandwidth speed is.
 #
-# In addition, we try to optimize a few things.
+# FIXME: Downlink rate-limiting is broken and commented out...
+#
+# In addition, we try to optimize a few things to make sure latency stays low
+# even as bandwidth usage gets high (e.g., prioritize DNS, TCP ACKs).
 #
 # You can query queue statistics like this:
 #
@@ -38,31 +40,69 @@
 # prior to execution
 #
 # DEV - the device to be managed (e.g., eth0)
-# UP_MB - the uplink speed in mbits
-# DOWN_MB - the downlink speed in mbits
+# UP_MBIT - the uplink speed in mbits
+# DOWN_MBIT - the downlink speed in mbits
 #
+
+# FIXME: should really allow for UP_KBIT or UP_MBIT via config... KVH or crappy
+#        4g modems might benefit from that.
+
 
 # check for required variables
 if [ -z "$DEV" ]; then
     echo "DEV not specified"
     exit 1
 fi
-if [ -z "$UP_MB" ]; then
-    echo "UP_MB not specified"
+if [ -z "$UP_MBIT" ]; then
+    echo "UP_MBIT not specified"
     exit 1
 fi
-if [ -z "$DOWN_MB" ]; then
-    echo "DOWN_MB not specified"
+if [ -z "$DOWN_MBIT" ]; then
+    echo "DOWN_MBIT not specified"
     exit 1
 fi
 
 # do some math - we need to divide up the bandwidth, which requires us to
 # convert from mbit to kbit
-UP_KB=$((UP_MB*1000))
-DOWN_KB=$((DOWN_MB*1000))
+#
+# FIXME: Should we also knock 5% off the maximum speeds here, to try and play
+#        it extra safe?  I'm going with no, for now.
+#
+UP_KBIT=$((UP_MBIT*1000))
+DOWN_KBIT=$((DOWN_MBIT*1000))
 
+# if individual rates not specified, calculate them with sane defaults
+if [ -z "$UP_HIGH_GUARANTEED_RATE_KBIT" ]; then
+    UP_HIGH_GUARANTEED_RATE_KBIT=$(($UP_KBIT*20/100))
+fi
+if [ -z "$UP_MEDIUM_GUARANTEED_RATE_KBIT" ]; then
+    UP_MEDIUM_GUARANTEED_RATE_KBIT=$(($UP_KBIT*75/100))
+fi
+if [ -z "$UP_LOW_GUARANTEED_RATE_KBIT" ]; then
+    UP_LOW_GUARANTEED_RATE_KBIT=$(($UP_KBIT*5/100))
+fi
+# NOTE: Regarding burst size, see comment in tc-htb(8): Due to Unix timing
+#       constraints, the maximum ceil rate is not infinite and may in fact be
+#       quite low. On Intel, there are 100 timer events per second, the maximum
+#       rate is that rate at which 'burst' bytes are sent each timer tick.
+#       From this, the minimum burst size for a specified rate can be
+#       calculated. For i386, a 10mbit rate requires a 12 kilobyte burst as
+#       100*12kb*8 equals 10mbit.
+#
+#       So, to support a maximum rate of 20MBit/s we should set burst to 25k
+#       (10 is really 12.5k despite the quoted math above).
+#
+if [ -z "$UP_BURST" ]; then
+    UP_BURST=25k
+fi
 
-# first, clear out old config
+# check for mistakes
+if [ $(($UP_HIGH_GUARANTEED_RATE_KBIT+$UP_MEDIUM_GUARANTEED_RATE_KBIT+$UP_LOW_GUARANTEED_RATE_KBIT)) -gt $UP_KBIT ]; then
+    echo "Sum of GUARANTEED rates exceeds UP_MBIT"
+    exit 1
+fi
+
+# clear out old config
 tc qdisc del dev $DEV root >/dev/null 2>&1
 tc qdisc del dev $DEV ingres >/dev/null 2>&1
 
@@ -70,28 +110,39 @@ tc qdisc del dev $DEV ingres >/dev/null 2>&1
 #### uplink ###################################################################
 #
 # This line sets a HTB qdisc on the root of $DEV, and it specifies that the
-# class 1:30 is used by default. It sets the name of the root as 1:, for future
+# class 1:20 is used by default. It sets the name of the root as 1:, for future
 # references.
 tc qdisc add dev $DEV root handle 1: htb default 20
 
 # This creates a class called 1:1, which is direct descendant of root (the
 # parent is 1:), this class gets assigned also an HTB qdisc, and then it sets a
-# max rate of 95% of our uplink speed, with a burst of 15k
-tc class add dev $DEV parent 1: classid 1:1 htb rate $(($UP_KB*95/100))kbit burst 15k
+# max GUARANTEED rate to our specified uplink speed, with a burst of 25k
+#
+# NOTE: We don't specify a `ceil`, so it defaults to the `rate` value (i.e.,
+#       there will be no bursting above `rate` allowed).
+#
+# NOTE: The `burst` value should be at least as high as the highest `burst` of
+#       its children (even though 1:1 will not have any bursting).
+#
+tc class add dev $DEV parent 1: classid 1:1 htb rate ${UP_KBIT}kbit \
+   burst $UP_BURST
 
 # The previous class has these branches:
 
 # Class 1:10, which is our HIGH priority class
-tc class add dev $DEV parent 1:1 classid 1:10 htb rate $(($UP_KB*80/100))kbit \
-   ceil $(($UP_KB*95/100))kbit burst 15k prio 1
+tc class add dev $DEV parent 1:1 classid 1:10 htb \
+   rate ${UP_HIGH_GUARANTEED_RATE_KBIT}kbit ceil ${UP_KBIT}kbit \
+   burst $UP_BURST prio 1
 
 # Class 1:20, which is our MEDIUM priority class
-tc class add dev $DEV parent 1:1 classid 1:20 htb rate $(($UP_KB*50/100))kbit \
-   ceil $(($UP_KB*95/100))kbit burst 15k prio 2
+tc class add dev $DEV parent 1:1 classid 1:20 htb \
+   rate ${UP_MEDIUM_GUARANTEED_RATE_KBIT}kbit ceil ${UP_KBIT}kbit \
+   burst $UP_BURST prio 2
 
-# Class 1:30, which has our LOW priority class (as in, where packets go to die)
-tc class add dev $DEV parent 1:1 classid 1:30 htb rate $(($UP_KB*10/100))kbit \
-   ceil $(($UP_KB*95/100))kbit burst 15k prio 3
+# Class 1:30, which is our LOW priority class (as in, where packets go to die)
+tc class add dev $DEV parent 1:1 classid 1:30 htb \
+   rate ${UP_LOW_GUARANTEED_RATE_KBIT}kbit ceil ${UP_KBIT}kbit \
+   burst $UP_BURST prio 3
 
 # Martin Devera, author of HTB, then recommends SFQ for beneath these classes:
 tc qdisc add dev $DEV parent 1:10 handle 10: sfq perturb 10
@@ -105,6 +156,9 @@ tc qdisc add dev $DEV parent 1:30 handle 30: sfq perturb 10
 # Maximize Riliability (MR) + MD, and MMC+MR+MD.  See tc-prio(8) for details.
 #
 # NOTE: We do this using the meta(priority) field to make the rule easier.
+#
+# FIXME: This *should* catch ssh, telnet, etc, but NOT sftp, scp, or rsync
+#        transfers...  need to double check this.
 #
 tc filter add dev $DEV parent 1: basic \
    match 'meta(priority eq 6)' classid 1:10
@@ -231,7 +285,7 @@ done
 ##
 ## burst was 10k, 20k makes pages almost loadable... 
 #tc filter add dev $DEV parent ffff: protocol ip prio 50 u32 \
-#   match ip src 0.0.0.0/0 police rate $(($DOWN_KB*95/100))kbit \
+#   match ip src 0.0.0.0/0 police rate $(($DOWN_KBIT*95/100))kbit \
 #   burst 10k drop \
 #   flowid :1
 #
@@ -247,6 +301,6 @@ done
 #tc qdisc del dev $DEV ingress
 #tc qdisc add dev $DEV handle ffff: ingress
 #tc qdisc del dev ifb4eth0 root
-#tc qdisc add dev ifb4eth0 root cake bandwidth $(($UP_KB*95/100))kbit besteffort
+#tc qdisc add dev ifb4eth0 root cake bandwidth $(($UP_KBIT*95/100))kbit besteffort
 #ip link set ifb4eth0 up # important 
 #tc filter add dev $DEV parent ffff:  matchall action mirred egress redirect dev ifb4eth0

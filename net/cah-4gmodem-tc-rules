@@ -38,7 +38,24 @@ export DEV=eth0.3
 #        perhaps more tweaking of the antena could see some gains, but it was
 #        annoying working on the roof.  ;-)
 #
-export UP_MB=2
-export DOWN_MB=4
+# FIXME: did more testing from basement shelf at home.  The netgear w/out any
+#        antena or dangly bits pulled in pretty consistent 4Mbps/4Mbps Down/Up.
+#        The peplink was suprisingly not-quite-as-good (but is way more
+#        featureful), but I think it will play much better with a non-crappy
+#        antena.  Will need to do more testing when I put this into place at
+#        the hospital.
+#
+# FIXME: The danger is setting UP_MB too high... if we do, we won't be able to
+#        push enough traffic to get our tc rules to apply propperly.  But if we
+#        set it too low, we'll also be capping what we CAN use...  hmm...
+#
+export UP_MBIT=4
+export DOWN_MBIT=4
+
+export UP_HIGH_GUARANTEED_RATE_KBIT=1024
+export UP_MEDIUM_GUARANTEED_RATE_KBIT=1024
+export UP_LOW_GUARANTEED_RATE_KBIT=8
+
+
 
 exec $(dirname $0)/tc-rules $*
