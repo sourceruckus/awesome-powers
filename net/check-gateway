@@ -26,6 +26,7 @@
 
 log=$0.log
 lock=$0.lock
+state=$0.state
 
 
 # debug echo - only prints if enabled
@@ -320,6 +321,24 @@ check_ifaces()
             fi
         done
 
+        # check for changed public ip address
+        #
+        # NOTE: This can happen even if we haven't changed our actual gw here,
+        #       if the gw has gotten a new public IP from the ISP for example.
+        #       This happens quite frequently with 4G and StarLink.
+        #
+        # NOTE: `ip_cur` gets stored as `ip_prev` in our state file on exit,
+        #       and parsed at startup, so `ip_prev` should already be set (or
+        #       empty if this is the first ever run).
+        #
+        decho "checking $iface's public ip"
+        ip_cur=$(host myip.opendns.com resolver1.opendns.com | awk '/^myip.opendns.com/ {print $NF}')
+        if [ "$ip_cur" != "$ip_prev" ]; then
+            echo "$(timestamp): New public IP detected! Was $ip_prev, now $ip_cur"
+            # set gw_modified so we get alerts
+            gw_modified=y
+        fi
+
         # check for dependent ifaces
         v=${iface}_deps
         deps=${!v}
@@ -331,6 +350,14 @@ check_ifaces()
         break
 
     done
+}
+
+
+write_state()
+{
+    cat > $state <<EOF
+ip_prev=$ip_cur
+EOF
 }
 
 
@@ -462,6 +489,13 @@ decho "pingenator: $pingenator"
 go="touch $lock"
 decho $go
 deval $go
+
+# parse the state file, if present
+if [ -f $state ]; then
+    . $state
+fi
+# register at-exit func to update state file IF NOT DRYRUN
+deval trap write_state EXIT
 
 gw_modified=
 check_ifaces $iface_list
