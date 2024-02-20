@@ -287,7 +287,21 @@ check_ifaces()
 
         # skip if not reachable
         if ! ip_is_reachable ${r[1]}; then
-            decho "interface $iface not reachable, skipping"
+            # NOTE: My netgear 4g modem seems to need to have interface lowered
+            #       and reraised periodically... I thought this might get fixed
+            #       by letting NetworkManager auto-raise and track the
+            #       interface.  I seem to recall it auto-failing and
+            #       re-aquiring DHCP leases when this happens.  But, alas, I
+            #       keep seing unreachable gw IPs from the Netgear 4g
+            #       modem... and NetworkManager either doesn't notice or it's
+            #       taking way too long.  We'd better lower interfaces that
+            #       fail the reachable test.
+            if [ -n "$opt_dryrun" ]; then
+                decho "interface $iface's gw is not reachable, not lowering because --dry-run"
+            else
+                decho "interface $iface's gw is not reachable, lowering"
+                nmcli con down $iface
+            fi
             continue
         fi
 
