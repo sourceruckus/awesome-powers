@@ -143,13 +143,17 @@ ip_is_good_gw()
         go+=" --exclude $x"
     done
     decho $go
-    # FIXME: Should we call pingenator if --dry-run?  It could cause
-    #        problems, so I'm gonna go with "no".  For now.
+    # NOTE: I initially considered not calling pingenator if --dry-run, because
+    #       it makes routing table changes and that could be unexpected, but it
+    #       makes running this as --dry-run pretty useless as it completely
+    #       eliminates the interface testing...  After doing a lot of testing,
+    #       I eventually decided to let pingenator do it's thing even if
+    #       --dry-run.
     if [ -n "$opt_verbose" ]; then
-        deval $go
+        eval $go
     else
         # be silent unless --verbose
-        deval $go >/dev/null 2>&1
+        eval $go >/dev/null 2>&1
     fi
 }
 
