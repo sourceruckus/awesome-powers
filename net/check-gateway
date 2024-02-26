@@ -350,12 +350,30 @@ check_ifaces()
         #       and parsed at startup, so `ip_prev` should already be set (or
         #       empty if this is the first ever run).
         #
+        # FIXME: Hm... I have twice now (in less then 4 hours of testing) seen
+        #        the Netgear 4g modem go crazy with public ip changing every
+        #        single run until I connect via TeamViewer to make a lot of
+        #        traffic.  Maybe emailing every time is a bad idea?
+        #
+        # FIXME: Yeah, the Peplink one does it, too.  Just constantly changing
+        #        IP every single time I check.  I believe this is normal, and
+        #        the carrier isn't actually even assigning us in IP until there
+        #        is traffic.  If I log in via TeamViewer and start doing
+        #        bandwidth tests the IP stabilizes... until a few minutes after
+        #        I stop.  At least for now, I'm not going to have this trigger
+        #        an alert email.  Relying on ssh access via a known 4g IP is
+        #        clearly not only a bad idea, it's going to prove to be
+        #        impossible.
+        #
         decho "checking $iface's public ip"
         ip_cur=$(host myip.opendns.com resolver1.opendns.com | awk '/^myip.opendns.com/ {print $NF}')
         if [ "$ip_cur" != "$ip_prev" ]; then
             echo "$(timestamp): New public IP detected! Was $ip_prev, now $ip_cur"
             # set gw_modified so we get alerts
-            gw_modified=y
+            #
+            # NOTE: Nope, see FIXMEs above.
+            #
+            #gw_modified=y
         fi
 
         # check for dependent ifaces
