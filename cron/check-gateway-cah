@@ -7,6 +7,11 @@ AP=/scrap/awesome-powers
 
 # periodic gateway checking (and logfile appending)
 * * * * * root $AP/net/check-gateway-cah --mail $MAILTO
+* * * * * root sleep 10; $AP/net/check-gateway-cah --mail $MAILTO
+* * * * * root sleep 20; $AP/net/check-gateway-cah --mail $MAILTO
+* * * * * root sleep 30; $AP/net/check-gateway-cah --mail $MAILTO
+* * * * * root sleep 40; $AP/net/check-gateway-cah --mail $MAILTO
+* * * * * root sleep 50; $AP/net/check-gateway-cah --mail $MAILTO
 
 # end of day analysis and log rotation
 #
