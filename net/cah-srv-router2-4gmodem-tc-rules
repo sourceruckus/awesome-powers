@@ -1,0 +1,43 @@
+#!/bin/bash
+#
+# Awesome Powers - scripts & config files of pure awesomeness
+#
+# Copyright 2018-2024 Michael D Labriola <veggiemike@sourceruckus.org>
+#
+# Licensed under the GPLv3. See the file COPYING for details. 
+#
+# This script wraps around tc-rules providing settings for the 4G modem WAN
+# interface on srv-router2 at the Cowesett Animal Hospital.  As with the cable
+# interface, this is a bit hairy because we have srv-router1 acting as the
+# gateway for the rest of the hospital (other than srv-router2 and aragorn),
+# and it's trying to do traffic shaping of it's own.  To help prevent overruns,
+# I'm going to heavily limit the uplink on aragorn and srv-router2 (and we
+# already under-guarantee rates on srv-router1 because of cell variability).
+#
+#
+### higher priority stuff
+#
+# nothing (other than default tc-rules defaults)
+#
+### lower priority stuff
+#
+# nothing
+#
+### middle tier
+#
+# anything else
+#
+
+export DEV=eth0.3
+
+# Setting the ceiling extremely low to cap the outgoing traffic to hopefully
+# avoid overruns on srv-router1.
+#
+export UP_MBIT=1
+export DOWN_MBIT=4
+
+export UP_HIGH_GUARANTEED_RATE_KBIT=512
+export UP_MEDIUM_GUARANTEED_RATE_KBIT=504
+export UP_LOW_GUARANTEED_RATE_KBIT=8
+
+exec $(dirname $0)/tc-rules $*

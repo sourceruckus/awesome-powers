@@ -12,50 +12,52 @@
 #
 ### higher priority stuff
 #
-# voip - not currently on it's own vlan, but planning to switch that as soon as
-# possible.  once i have, i can mark packets via iptables very easily.
-#
-# dicom - not nearly as important as the voip, but we could consider
-# identifying dicom traffic going from the ultrasound machine or digital xray
-# machine(s)...
+# voip - Not currently on it's own vlan, but planning to switch to that if it
+# ever becomes trivial.  It looks like our phones are using DSCP: AF31, TOS:
+# 0x68 (104 decimal), so I guess we could pick that traffic out.  For now,
+# though, I've marked all traffic from our phones' MACs as high priority.
 #
 ### lower priority stuff
 #
-# anything coming from vlan100.
+# anything coming from public WiFi - Marked via iptables
 #
 ### middle tier
 #
-# anything else
+# anything else, including Shepherd (because it's just a webpage) and DICOM
+# from digital xray (because it's basically bulk upload when needed).
 #
 
 export DEV=eth0.3
-# FIXME: i have no idea what the up/down speeds are like on this... better test
-#        it out.  i seem to remember it being pretty bad wherever i placed the
-#        modem...  like 2M down, 1M up or something?
+
+# Setting the ceiling to 4mbit/s... we set the high/medium/low guaranteed rates
+# below, but this is still needed to cap the outgoing traffic.
 #
-#        testing with antena on roof at home got about 8M down, 4M up... but
-#        tests were all over the place.  strangest one was 6 down, 11 up.
-#        perhaps more tweaking of the antena could see some gains, but it was
-#        annoying working on the roof.  ;-)
-#
-# FIXME: did more testing from basement shelf at home.  The netgear w/out any
-#        antena or dangly bits pulled in pretty consistent 4Mbps/4Mbps Down/Up.
-#        The peplink was suprisingly not-quite-as-good (but is way more
-#        featureful), but I think it will play much better with a non-crappy
-#        antena.  Will need to do more testing when I put this into place at
-#        the hospital.
-#
-# FIXME: The danger is setting UP_MB too high... if we do, we won't be able to
-#        push enough traffic to get our tc rules to apply propperly.  But if we
-#        set it too low, we'll also be capping what we CAN use...  hmm...
+# FIXME: Maybe raise these rates if testing proves we're massively
+#        underutilizing the interface.
 #
 export UP_MBIT=4
 export DOWN_MBIT=4
 
+# Guarantee 1M for HIGH, 1M for MEDIUM, and next to nothing for LOW.  These
+# numbers intentionally don't add up to our ceiling UP_MBIT, because that's
+# really a moving target depending on signal quality.
+#
+# NOTE: The Ooma webpage says you need 256 kbps per line here
+#       https://support.ooma.com/office/speed-test/, but I recall seing
+#       slightly less than 512 listed somewhere at some point too.  If 256 will
+#       do, that 1M is good for 4 concurrent phone calls GUARANTEED.  Once you
+#       have more than 4 though, they probably all start getting some of their
+#       packets dumped into the MEDIUM queue (unless there's spare uplink
+#       bandwidth, which is a solid probably)
+#
+# NOTE: We also don't guarantee the full uplink rate because it could
+#       technically also be in use by aragorn and srv-router2, both of which
+#       have access to this WAN interface for emergency off-site access (i.e.,
+#       in case srv-router1 fails to propperly switch over to 4g when cable
+#       goes out).
+#
 export UP_HIGH_GUARANTEED_RATE_KBIT=1024
 export UP_MEDIUM_GUARANTEED_RATE_KBIT=1024
 export UP_LOW_GUARANTEED_RATE_KBIT=8
-
-
 
 exec $(dirname $0)/tc-rules $*

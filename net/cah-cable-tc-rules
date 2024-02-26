@@ -12,27 +12,31 @@
 #
 ### higher priority stuff
 #
-# voip - Not currently on it's own vlan, but planning to switch that as soon as
-# possible.  once I have, I can mark packets via iptables very easily.  It
-# looks like our phones are using DSCP: AF31, TOS: 0x68 (104 decimal), so I
-# guess we could pick that traffic out.  For now, though, I've marked all
-# traffic from our phones' MACs as high priority.
-#
-# dicom - Not nearly as important as the voip, but we could consider
-# identifying dicom traffic going from the ultrasound machine or digital xray
-# machine(s)...
+# voip - Not currently on it's own vlan, but planning to switch to that if it
+# ever becomes trivial.  It looks like our phones are using DSCP: AF31, TOS:
+# 0x68 (104 decimal), so I guess we could pick that traffic out.  For now,
+# though, I've marked all traffic from our phones' MACs as high priority.
 #
 ### lower priority stuff
 #
-# anything coming from vlan100.
+# anything coming from public WiFi - Marked via iptables
 #
 ### middle tier
 #
-# anything else
+# anything else, including Shepherd (because it's just a webpage) and DICOM
+# from digital xray (because it's basically bulk upload when needed).
 #
 
 export DEV=eth0.2
 export UP_MBIT=20
 export DOWN_MBIT=100
+
+# NOTE: We leave HIGH and LOW alone (at 20% and 5% of the 20Mbit uplink), but
+#       we're manually chopping 5M off the guaranteed rate for MEDIUM here to
+#       help mitigate the risk of overruns from aragorn/srv-router2, which have
+#       their own public IPs and their own tc-rules but share this 20Mbit
+#       uplink.
+#
+export UP_MEDIUM_GUARANTEED_RATE_KBIT=10240
 
 exec $(dirname $0)/tc-rules $*

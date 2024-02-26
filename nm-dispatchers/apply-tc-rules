@@ -13,12 +13,16 @@ AP=/scrap/awesome-powers
 
 # figure out what our config files should be named based on the name we were
 # invoked as, assuming it's "apply-SITENAME-tc-rules" and config files are
-# "net/SITENAME-INTNAME-tc-rules"
+# "net/SITENAME-INTNAME-tc-rules" or "net/SITENAME-HOSTNAME-INTNAME-tc-rules".
 SITE=$(basename $0 | sed 's|^apply-||' |sed 's|-tc-rules$||')
-RULES=$AP/net/$SITE-*-tc-rules
+HOSTNAME=$(hostname)
+RULES=$AP/net/$SITE-$HOSTNAME-*-tc-rules
 if [ ! -f $(echo $RULES | awk '{print $1}') ]; then
-    # just quietly exit
-    exit 0
+    RULES=$AP/net/$SITE-*-tc-rules
+    if [ ! -f $(echo $RULES | awk '{print $1}') ]; then
+        # just quietly exit
+        exit 0
+    fi
 fi
 
 
