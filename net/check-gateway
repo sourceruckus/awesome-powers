@@ -13,14 +13,19 @@
 # NOTE: All output appended to logfile, which is then mailed and removed each
 #       night (log rotation and mailing is not this script's responsibility).
 #
-# FIXME: Should our goal here be to ensure that we only have a functional
-#        gateway?  In other words, should we remove bad gateway even if there's
-#        not a good replacement... The only reason NOT to do this, is the
-#        occasional blib in connectivity that resolves itself within a couple
-#        minutes.  In this case, leaving things alone might be better.  That
-#        being said, if this script is getting called at a high frequency
-#        (every minute), removing the borky gateway will give better results
-#        (e.g., host unreachable instead of timing out) until it's back up.
+# FIXME: Can we make this email me a full summary if anything has changed, but
+#        be silent otherwise?  In other words, auto-verbose only when failures
+#        detected.  Would be a pain, i think... redirect all output to a tmp
+#        file, then stick it into our logfile if gateway changed?
+#
+# FIXME: Also, add ability to count failures so we can only switch gw if 2 or 3
+#        cycles of fail have happened.  To avoid flipping back and forth
+#        between two crappy WAN interfaces.
+#
+#        I guess we should also count successes before switching to a gw.  So,
+#        require N consecutive successfull pingenator tests before enabling a
+#        gateway.
+#
 #
 
 
@@ -246,11 +251,11 @@ check_ifaces()
         #
         if [ "$(iface_get_state $iface)" != "activated" ]; then
             if [ -n "$opt_dryrun" ]; then
-                decho "skipping inactive interface during --dry-run"
+                echo "$(timestamp): Skipping inactive interface $iface during --dry-run"
                 continue
             else
-                decho "raising inactive interface"
-                nmcli con up $iface
+                echo "$(timestamp): Raising inactive interface $iface"
+                nmcli con up $iface >/dev/null 2>&1
             fi
         fi
 
@@ -297,10 +302,10 @@ check_ifaces()
             #       taking way too long.  We'd better lower interfaces that
             #       fail the reachable test.
             if [ -n "$opt_dryrun" ]; then
-                decho "interface $iface's gw is not reachable, not lowering because --dry-run"
+                echo "$(timestamp): Interface $iface's gw is not reachable, not lowering because --dry-run"
             else
-                decho "interface $iface's gw is not reachable, lowering"
-                nmcli con down $iface
+                echo "$(timestamp): Interface $iface's gw is not reachable, lowering"
+                nmcli con down $iface >/dev/null 2>&1
             fi
             continue
         fi
