@@ -68,7 +68,8 @@ COMMIT
 # Accept all trusted internal network traffic (i.e., not internet and not
 # public.cah)
 #
--A INPUT ! -i xenbr0.2 -j ACCEPT
+-A INPUT -i xenbr0.20 -j ACCEPT
+-A INPUT -i xenbr0.40 -j ACCEPT
 
 
 # drop anything we've marked for dropping
@@ -119,6 +120,15 @@ COMMIT
 -A INPUT -i xenbr0.2 -p udp --dport 60000:61000 -j ACCEPT
 
 
+# WiFi APs
+#
+# We let these in from public wifi, by mac address, so they can talk to the Unifi management
+# software
+#
+# wifi-ap2 (CAH Public)
+-A INPUT -i xenbr0.10 -m mac --mac-source 74:83:c2:b9:f0:ea -j ACCEPT
+
+
 # Drop invalid packets
 -A INPUT -m conntrack --ctstate INVALID -j DROP
 
@@ -142,19 +152,10 @@ COMMIT
 # Allow all replies to forward back to the appropriate interface.  No point in
 # dropping any of this, really.
 #
-# FIXME: should we eventually remove the xenbr0 interface rules?
-#
--A FORWARD -i xenbr0.2 -o xenbr0 -m state --state RELATED,ESTABLISHED -j ACCEPT
 -A FORWARD -i xenbr0.2 -o xenbr0.20 -m state --state RELATED,ESTABLISHED -j ACCEPT
 
 
 # Internal network forwarding policies
-#
-# old 192 network can go everywhere (TEMPORARY)
-#
-# FIXME: remove this once we're ready to decomission that old network
-#
--A FORWARD -i xenbr0 -j ACCEPT
 #
 # infrastructure.cah can go everywhere (CONFIRMED)
 -A FORWARD -i xenbr0.20 -j ACCEPT
