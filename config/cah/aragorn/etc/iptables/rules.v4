@@ -45,21 +45,6 @@ COMMIT
 :FORWARD DROP [0:0]
 :OUTPUT ACCEPT [0:0]
 
-# Custom per-protocol chains
-:UDP - [0:0]
-:TCP - [0:0]
-:ICMP - [0:0]
-
-# Acceptable UDP traffic
-
-
-# Acceptable TCP traffic
-
-
-# Acceptable ICMP traffic
--A ICMP -p icmp --icmp-type echo-request -j ACCEPT
-
-
 # Boilerplate acceptance policy
 -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 -A INPUT -i lo -j ACCEPT
@@ -67,13 +52,20 @@ COMMIT
 
 # Accept all trusted internal network traffic (i.e., not internet and not
 # public.cah)
-#
 -A INPUT -i xenbr0.20 -j ACCEPT
 -A INPUT -i xenbr0.40 -j ACCEPT
 
 
 # drop anything we've marked for dropping
 -A INPUT -p tcp -m mark --mark 1 -j REJECT --reject-with tcp-reset
+
+
+# ICMP policy
+#
+# accept ping requests from each each WAN interface
+-A INPUT -i xenbr0.2 -p icmp --icmp-type echo-request -j ACCEPT
+-A INPUT -i xenbr0.3 -p icmp --icmp-type echo-request -j ACCEPT
+-A INPUT -i xenbr0.4 -p icmp --icmp-type echo-request -j ACCEPT
 
 
 # SSH policy
@@ -88,6 +80,11 @@ COMMIT
 #
 # open up our non-standard port, because we're going to forward traffic from
 # there to port 22 and we can't if it's blocked (duh).
+#
+# NOTE: At least for now, we're only opening this up for the cable WAN
+#       connection.  The two 4g modem interfaces result in constantly changing
+#       IPs, so they're not very useful for direct SSH access.
+#
 -A INPUT -i xenbr0.2 -p tcp --dport 2723 -j ACCEPT
 
 # Instead of blacklisting IPs that are spamming my box, let's try and deter
@@ -115,7 +112,8 @@ COMMIT
 # is started listening on a port in the range 60000-61000.  So, we have to
 # allow that.
 #
-# FIXME: why doesn't this work...?
+# FIXME: why doesn't this work...?  the firewal rules look right, but mosh
+#        never manages to connect... odd...
 #
 -A INPUT -i xenbr0.2 -p udp --dport 60000:61000 -j ACCEPT
 
@@ -132,13 +130,6 @@ COMMIT
 # Drop invalid packets
 -A INPUT -m conntrack --ctstate INVALID -j DROP
 
-# Pass traffic to protocol-specific chains
-## Only allow new connections (established and related should already be handled)
-## For TCP, additionally only allow new SYN packets since that is the only valid
-## method for establishing a new TCP connection
--A INPUT -p udp -m conntrack --ctstate NEW -j UDP
--A INPUT -p tcp --syn -m conntrack --ctstate NEW -j TCP
--A INPUT -p icmp -m conntrack --ctstate NEW -j ICMP
 
 # Reject anything that's fallen through to this point
 ## Try to be protocol-specific w/ rejection message
