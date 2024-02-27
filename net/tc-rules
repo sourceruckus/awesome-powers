@@ -68,8 +68,8 @@ fi
 # FIXME: Should we also knock 5% off the maximum speeds here, to try and play
 #        it extra safe?  I'm going with no, for now.
 #
-UP_KBIT=$((UP_MBIT*1000))
-DOWN_KBIT=$((DOWN_MBIT*1000))
+UP_KBIT=$((UP_MBIT*1024))
+DOWN_KBIT=$((DOWN_MBIT*1024))
 
 # if individual rates not specified, calculate them with sane defaults
 if [ -z "$UP_HIGH_GUARANTEED_RATE_KBIT" ]; then
