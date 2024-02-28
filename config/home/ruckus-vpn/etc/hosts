@@ -1,0 +1,27 @@
+# -*- mode: sh -*-
+127.0.0.1 localhost
+
+# The following lines are desirable for IPv6 capable hosts
+::1 ip6-localhost ip6-loopback
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+ff02::3 ip6-allhosts
+
+# my public ip
+18.189.87.14	vpn.sourceruckus.org
+
+# my wg ip
+10.99.0.1	ruckus-vpn
+
+# cah
+10.99.0.10	aragorn
+10.99.0.11	srv-router1
+10.99.0.12	srv-router2
+
+# home
+10.99.0.21	elrond
+
+# other
+10.99.0.41	aldarion
