@@ -48,6 +48,7 @@ try_interface()
 {
     # raise it
     wg-quick up $1
+    sleep 2
 
     # try pinging test ip
     ping -w2 -R $TEST_IP
