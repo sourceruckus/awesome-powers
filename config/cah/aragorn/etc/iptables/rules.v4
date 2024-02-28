@@ -54,6 +54,7 @@ COMMIT
 # public.cah)
 -A INPUT -i xenbr0.20 -j ACCEPT
 -A INPUT -i xenbr0.40 -j ACCEPT
+-A INPUT -i wg-ruckus -j ACCEPT
 
 
 # drop anything we've marked for dropping
