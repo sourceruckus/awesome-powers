@@ -147,8 +147,11 @@ for x in args:
             tmp = y.lower()
         else:
             tmp = y
-        t, v = tmp.split('=')
-        tags[t] = v
+        try:
+            t, v = tmp.split('=')
+            tags[t] = v
+        except:
+            print("blarg:", tmp)
     vprint("tags (original):", tags)
 
     # do simple additions
