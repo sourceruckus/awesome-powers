@@ -90,10 +90,12 @@ fi
 #       100*12kb*8 equals 10mbit.
 #
 #       So, to support a maximum rate of 20MBit/s we should set burst to 25k
-#       (10 is really 12.5k despite the quoted math above).
+#       (10 is really 12.8k despite the quoted math above).
 #
 if [ -z "$UP_BURST" ]; then
-    UP_BURST=25k
+    # calculate a default burst based on the comment mentioned above, adding 1k
+    # to account for the dropped trailing decimal portion
+    UP_BURST=$(($UP_KBIT/8/100+1))k
 fi
 
 # check for mistakes
