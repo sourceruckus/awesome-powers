@@ -18,6 +18,11 @@
 #        detected.  Would be a pain, i think... redirect all output to a tmp
 #        file, then stick it into our logfile if gateway changed?
 #
+#        I guess all I really care about is the pingenator test output, so
+#        perhaps switch to a --verbose=N setup where we include all debug if
+#        verbose>1, pingenator output if verbose>0, and nothing but warnings
+#        and routing commands if verbose=0.
+#
 # FIXME: Also, add ability to count failures so we can only switch gw if 2 or 3
 #        cycles of fail have happened.  To avoid flipping back and forth
 #        between two crappy WAN interfaces.
@@ -26,6 +31,8 @@
 #        require N consecutive successfull pingenator tests before enabling a
 #        gateway.
 #
+# FIXME: Add config for controlling pingenator's --success parameter, in case
+#        "any response" isn't a good success indicator.
 #
 
 
@@ -129,8 +136,10 @@ ip_is_reachable()
     #        single-packet-test failures from otherwise functional
     #        gateways... I suppose I should have seen that coming.
     #
-    #        could alternatively just skip this test and just pound w/
-    #        pingenator...
+    #        for now, we skip this test and just pound the gateway with
+    #        ip_is_good_gw().  if that proves not-good-enough for some reason,
+    #        maybe make this call pingenator with the specified ip listed 4
+    #        times (so it pings 1 packet 4 times in parallel).
     #
     ping -w1 -c1 $1 >/dev/null 2>&1
 }
@@ -144,17 +153,6 @@ ip_is_reachable()
 #
 ip_is_good_gw()
 {
-    # FIXME: Should we include pingenator as a submodule of awesome-powers?  If
-    #        so, should we use it by default here, add use_pingenator_sumbod
-    #        and/or use_pingenator_path or something like that to config file?
-    #
-    #        I'm going with yes, add it as submodule.  And yes, use it
-    #        explicitly based on our checkout location.  If that becomes
-    #        undesirable later, we'll add --use-system-pingenator or something
-    #        like that.  Probably best to add pingenator_path to conf and use
-    #        that if set, or just assume it's in $PATH if that variable is set
-    #        to "PATH".  or something.
-    #
     go="$pingenator -g $1 --dns"
     for x in $pingenator_excludes; do
         go+=" --exclude $x"
