@@ -1,6 +1,3 @@
-[submodule "subprojects/pingenator"]
-	path = subprojects/pingenator
-	url = https://github.com/sourceruckus/pingenator
 [submodule "subprojects/sanoid"]
 	path = subprojects/sanoid
 	url = https://github.com/veggiemike/sanoid.git
