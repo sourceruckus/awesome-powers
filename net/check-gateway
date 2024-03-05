@@ -218,6 +218,11 @@ iface_remove_routes()
 remove_all_managed_routes()
 {
     # make sure this only removes things a single time
+    #
+    # FIXME: This was a holdover from when we could specify "dependent ifaces",
+    #        which would result in some recursion... pretty sure we can remove
+    #        it.
+    #
     [ -n "$NO_MORE_REMOVING" ] && return
     local iface
     local dev
@@ -228,15 +233,6 @@ remove_all_managed_routes()
     local go
     for iface in $*; do
         iface_remove_routes $iface
-        
-        # check for dependent ifaces
-        v=${iface}_deps
-        deps=${!v}
-        if [ -n "$deps" ]; then
-            decho "$iface deps: $deps"
-            remove_all_managed_routes $deps
-        fi
-
     done
     export NO_MORE_REMOVING=y
 }
@@ -373,14 +369,7 @@ check_ifaces()
             # NOTE: Nope, see FIXMEs above.
             #
             #gw_modified=y
-        fi
 
-        # check for dependent ifaces
-        v=${iface}_deps
-        deps=${!v}
-        if [ -n "$deps" ]; then
-            decho "$iface deps: $deps"
-            check_ifaces $deps
         fi
 
         break
