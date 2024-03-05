@@ -255,10 +255,13 @@ check_ifaces()
         #
         if [ "$(iface_get_state $iface)" != "activated" ]; then
             if [ -n "$opt_dryrun" ]; then
-                echo "$(timestamp): Skipping inactive interface $iface during --dry-run"
+                decho "$(timestamp): Skipping inactive interface $iface during --dry-run"
                 continue
             else
-                echo "$(timestamp): Raising inactive interface $iface"
+                # FIXME: do we really care to see this in non-verbose mode?  it
+                #        makes a lot of noise if the interface raises, then
+                #        fails and lowers, over and over...
+                decho "$(timestamp): Raising inactive interface $iface"
                 nmcli con up $iface >/dev/null 2>&1
             fi
         fi
