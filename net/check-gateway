@@ -389,6 +389,7 @@ set_gw()
     routes_k=${iface}_routes
     routes=(${!routes_k})
     decho "dev=$dev, routes=${routes[*]}"
+    gw_cur=${routes[1]}
 
     # check if the route is already there
     #
@@ -460,9 +461,13 @@ set_gw()
 
 write_state()
 {
+    # if these have been set, update the "previous" variables.  otherwise, just
+    # leave the old previous values in place.
+    [ -n "$gw_cur" ] && gw_prev=$gw_cur
     [ -n "$ip_cur" ] && ip_prev=$ip_cur
 
     cat > $state <<EOF
+gw_prev=$gw_prev
 ip_prev=$ip_prev
 EOF
     for iface in $iface_list; do
