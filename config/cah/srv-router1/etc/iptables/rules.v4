@@ -28,12 +28,10 @@ COMMIT
 #        rule?
 #
 -A PREROUTING -i eth0.2 -p tcp --dport 2781 -j DNAT --to-destination 10.37.20.5:80
--A PREROUTING -i eth0.3 -p tcp --dport 2781 -j DNAT --to-destination 10.37.20.5:80
 -A POSTROUTING -d 10.37.20.5 -o eth0.20 -p tcp --dport 80 -j SNAT --to-source 10.37.20.2
 
 # send port 2723 to 22 locally
 -A PREROUTING -i eth0.2 -p tcp --dport 2723 -j DNAT --to-destination 10.37.20.2:22
--A PREROUTING -i eth0.3 -p tcp --dport 2723 -j DNAT --to-destination 10.37.20.2:22
 
 # masquerade all outbound traffic on our public interface (eth0.2, vlan2)
 -A POSTROUTING -o eth0.2 -j MASQUERADE
@@ -52,7 +50,6 @@ COMMIT
 # mark traffic that comes directly to port 22 so we can drop it later on w/out
 # also dropping the traffic we've forwarded there from 2723
 -A PREROUTING -i eth0.2 -p tcp --dport 22 -j MARK --set-mark 1
--A PREROUTING -i eth0.3 -p tcp --dport 22 -j MARK --set-mark 1
 
 # mark traffic coming from our voip phones, by mac address, so we can
 # prioritize their traffic w/ tc rules.
@@ -86,21 +83,6 @@ COMMIT
 :FORWARD DROP [0:0]
 :OUTPUT ACCEPT [0:0]
 
-# Custom per-protocol chains
-:UDP - [0:0]
-:TCP - [0:0]
-:ICMP - [0:0]
-
-# Acceptable UDP traffic
-
-
-# Acceptable TCP traffic
-
-
-# Acceptable ICMP traffic
--A ICMP -p icmp --icmp-type echo-request -j ACCEPT
-
-
 # Boilerplate acceptance policy
 -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 -A INPUT -i lo -j ACCEPT
@@ -123,12 +105,18 @@ COMMIT
 -A INPUT -p tcp -m mark --mark 1 -j REJECT --reject-with tcp-reset
 
 
+# ICMP policy
+#
+# accept ping requests from each each WAN interface
+-A INPUT -i eth0.2 -p icmp --icmp-type echo-request -j ACCEPT
+-A INPUT -i eth0.3 -p icmp --icmp-type echo-request -j ACCEPT
+
+
 # WireGuard policy
 #
 # let any wireguard traffic in on the port we're using
 #
 -A INPUT -i eth0.2 -p udp --dport 51820 -j ACCEPT
--A INPUT -i eth0.3 -p udp --dport 51820 -j ACCEPT
 # also allow it from public.cah
 -A INPUT -i eth0.10 -p udp --dport 51820 -j ACCEPT
 
@@ -143,7 +131,6 @@ COMMIT
 #        port 80.
 #
 -A INPUT -i eth0.2 -p tcp --dport 2781 -j ACCEPT
--A INPUT -i eth0.3 -p tcp --dport 2781 -j ACCEPT
 
 
 # SSH policy
@@ -159,7 +146,6 @@ COMMIT
 # open up our non-standard port, because we're going to forward traffic from
 # there to port 22 and we can't if it's blocked (duh).
 -A INPUT -i eth0.2 -p tcp --dport 2723 -j ACCEPT
--A INPUT -i eth0.3 -p tcp --dport 2723 -j ACCEPT
 
 # Let traffic from the public wifi ap in
 #
@@ -181,22 +167,13 @@ COMMIT
 #
 # record connections to ssh port
 -A INPUT -i eth0.2 -p tcp --dport 22 -m state --state NEW -m recent --set --name ssh --rsource
--A INPUT -i eth0.3 -p tcp --dport 22 -m state --state NEW -m recent --set --name ssh --rsource
 # then rate limit connection attempts to 3 per minute
 -A INPUT -i eth0.2 -p tcp --dport 22 -m state --state NEW -m recent ! --rcheck --seconds 60 --hitcount 4 --name ssh --rsource -j ACCEPT 
--A INPUT -i eth0.3 -p tcp --dport 22 -m state --state NEW -m recent ! --rcheck --seconds 60 --hitcount 4 --name ssh --rsource -j ACCEPT 
 
 
 # Drop invalid packets
 -A INPUT -m conntrack --ctstate INVALID -j DROP
 
-# Pass traffic to protocol-specific chains
-## Only allow new connections (established and related should already be handled)
-## For TCP, additionally only allow new SYN packets since that is the only valid
-## method for establishing a new TCP connection
--A INPUT -p udp -m conntrack --ctstate NEW -j UDP
--A INPUT -p tcp --syn -m conntrack --ctstate NEW -j TCP
--A INPUT -p icmp -m conntrack --ctstate NEW -j ICMP
 
 # Reject anything that's fallen through to this point
 ## Try to be protocol-specific w/ rejection message
@@ -210,16 +187,6 @@ COMMIT
 # Allow all replies to forward back to the appropriate interface.  No point in
 # dropping any of this, really.
 #
-# FIXME: should we eventually remove the eth0 interface rules?
-#
-#-A FORWARD -i eth0.2 -o eth0 -m state --state RELATED,ESTABLISHED -j ACCEPT
-#-A FORWARD -i eth0.2 -o eth0.10 -m state --state RELATED,ESTABLISHED -j ACCEPT
-#-A FORWARD -i eth0.2 -o eth0.20 -m state --state RELATED,ESTABLISHED -j ACCEPT
-#-A FORWARD -i eth0.2 -o eth0.30 -m state --state RELATED,ESTABLISHED -j ACCEPT
-#-A FORWARD -i eth0.2 -o eth0.40 -m state --state RELATED,ESTABLISHED -j ACCEPT
-#-A FORWARD -i eth0.2 -o wg-cah -m state --state RELATED,ESTABLISHED -j ACCEPT
-#
-# FIXME: try that w/out specifying output interface
 -A FORWARD -i eth0.2 -m state --state RELATED,ESTABLISHED -j ACCEPT
 -A FORWARD -i eth0.3 -m state --state RELATED,ESTABLISHED -j ACCEPT
 

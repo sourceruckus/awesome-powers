@@ -1,1 +1,1 @@
-../../../../home/common/etc/skel/.emacs
+../../../common/etc/skel/.emacs

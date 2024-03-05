@@ -1,1 +1,1 @@
-../../../../home/common/etc/skel/.zshrc
+../../../common/etc/skel/.zshrc
