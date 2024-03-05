@@ -25,11 +25,6 @@
 # FIXME: Add config for controlling pingenator's --success parameter, in case
 #        "any response" isn't a good success indicator.
 #
-# FIXME: Reorg to check all possible gateways prior to picking one.  In other
-#        words, monitor and record stats for all WAN interfaces every run, then
-#        check to see if our gw is working and switch.  This was we can add
-#        email alerts for failed backup WAN interfaces.
-#
 
 
 log=$0.log
@@ -250,14 +245,16 @@ check_ifaces()
         #       This means, any interface listed WILL get raised, so make sure
         #       to remove dead interfaces that shouldn't be auto-raised.
         #
+        # NOTE: I considered making these decho calls non-verbose echos, but an
+        #       interface that refuses to raise (or that raises but then fails
+        #       to work and gets lowered) causes us to spam the logs every
+        #       single run.
+        #
         if [ "$(iface_get_state $iface)" != "activated" ]; then
             if [ -n "$opt_dryrun" ]; then
                 decho "$(timestamp): Skipping inactive interface $iface during --dry-run"
                 continue
             else
-                # FIXME: do we really care to see this in non-verbose mode?  it
-                #        makes a lot of noise if the interface raises, then
-                #        fails and lowers, over and over...
                 decho "$(timestamp): Raising inactive interface $iface"
                 nmcli con up $iface >/dev/null 2>&1
             fi
@@ -330,11 +327,6 @@ check_ifaces()
             if [ -n "$opt_dryrun" ]; then
                 decho "$(timestamp): Interface $iface is not a good gateway, not lowering because --dry-run"
             else
-                # FIXME: maybe only warn if interface was up when we started?
-                #        otherwise, if cable is down, every single run raises,
-                #        tests, fails, and lowers with a bunch of error
-                #        messages.
-                #
                 decho "$(timestamp): Interface $iface is not a good gateway, lowering"
                 nmcli con down $iface >/dev/null 2>&1
             fi
@@ -404,7 +396,7 @@ set_gw()
     #        if an interface provides multiple routes
     #
     # FIXME: instead of this check, should we just believe our status variables
-    #        (e.g. iface_was_good)?
+    #        (e.g. gw_prev)?
     #
     for ((i=0; i<${#routes[@]}; i+=2)); do
         #echo ip route show ${routes[i]} via ${routes[i+1]} dev $dev
