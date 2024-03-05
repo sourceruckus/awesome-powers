@@ -62,10 +62,10 @@ deval()
 iface_get_routes()
 {
     # try manual gateway
-    gw=$(nmcli con show $1 |awk '/^IP4.GATEWAY/ {print $NF}')
+    gw=$(nmcli con show $1 2>/dev/null |awk '/^IP4.GATEWAY/ {print $NF}')
     if [ "$gw" = "" -o "$gw" = "--" ]; then
         # try DHCP otpions
-        gw=$(nmcli con show $1 |awk '/^DHCP4.OPTION[[:print:]]* routers =/ {print $NF}')
+        gw=$(nmcli con show $1 2>/dev/null |awk '/^DHCP4.OPTION[[:print:]]* routers =/ {print $NF}')
     fi
 
     # if we got a gateway, we need to format it as a route by adding 0.0.0.0/0
@@ -89,7 +89,7 @@ iface_get_routes()
     #        nothing...  we should be looking at ipv4.gateway and ipv4.routes
     #        instead, i guess
     #
-    routes=($(nmcli con show $1 |awk '/^IP4.ROUTE\[[^1]/ {print $4 $7}' | tr ',' ' '))
+    routes=($(nmcli con show $1 2>/dev/null |awk '/^IP4.ROUTE\[[^1]/ {print $4 $7}' | tr ',' ' '))
     # FIXME: actually, i haven't run into a situation yet where DHCP is
     #        providing additional static routes.  It can as dhcp option 121,
     #        but i'd have to configure a DHCP server to do that to test
@@ -113,8 +113,7 @@ iface_get_routes()
 
 iface_get_state()
 {
-    state=$(nmcli con show $1 |awk '/^GENERAL.STATE/ {print $NF}')
-    echo $state
+    nmcli con show $1 2>/dev/null |awk '/^GENERAL.STATE/ {print $NF}'
 }
 
 
@@ -126,7 +125,7 @@ iface_get_devname()
     #        IP-IFACE.  Eventually switch over, or maybe use IP-IFACE if
     #        non-empty otherwise DEVICES?
     #
-    nmcli con show $1 |awk '/^GENERAL.DEVICES/ {print $NF}'
+    nmcli con show $1 2>/dev/null |awk '/^GENERAL.DEVICES/ {print $NF}'
 }
 
 
