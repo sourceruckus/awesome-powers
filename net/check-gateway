@@ -269,11 +269,6 @@ check_ifaces()
         eval ${iface}_dev=$dev
         
         # figure out routes, first from manual config, then from nm info
-        #
-        # FIXME: this route check failing (currently resuting in WARNING: no
-        #        routes for $iface), at leats for my setup, is really implying
-        #        that the interface didn't raise successfully.
-        #
         v=${iface}_routes
         routes=$(echo ${!v} | tr ',' ' ')
         if [ -z "$routes" ]; then
@@ -281,7 +276,27 @@ check_ifaces()
             eval ${iface}_routes=\"$routes\"
         fi
         if [ -z "$routes" ]; then
-            echo "WARNING: no routes for $iface"
+            # NOTE: This `routes` check failing, at least for my setup, is
+            #       really implying that the interface didn't raise
+            #       successfully.  Even if that's occasionally an
+            #       overstatement, it still means the interface is unusable as
+            #       a gateway, so we treat that as failure and lower the
+            #       interface.
+            #
+            # FIXME: Actually, in some cases, it means I have to log in and
+            #        restart the NetworkManager service...  In old versions (I
+            #        think circa Bionic Beaver), NetworkManager can get all
+            #        munged up, and magically fixes itself on service restart.
+            #        The error message specifically is "Error: Connection
+            #        activation failed: Connection 'vlan3' is not available on
+            #        the device eth0.3 at this time."
+            #
+            if [ -n "$opt_dryrun" ]; then
+                decho "$(timestamp): No routes for $iface, not lowering because --dry-run"
+            else
+                decho "$(timestamp): No routes for $iface, lowering"
+                nmcli con down $iface >/dev/null 2>&1
+            fi
             continue
         else
             decho "routes: $routes"
