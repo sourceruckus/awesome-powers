@@ -13,26 +13,22 @@
 # NOTE: All output appended to logfile, which is then mailed and removed each
 #       night (log rotation and mailing is not this script's responsibility).
 #
-# FIXME: Can we make this email me a full summary if anything has changed, but
-#        be silent otherwise?  In other words, auto-verbose only when failures
-#        detected.  Would be a pain, i think... redirect all output to a tmp
-#        file, then stick it into our logfile if gateway changed?
+# FIXME: Perhaps add ability to count failures so we can only switch gw if 2 or
+#        3 cycles of fail have happened.  To avoid flipping back and forth
+#        between two crappy WAN interfaces.  Not sure I would really want to
+#        continue using a known bad WAN interface... so perhaps not?
 #
-#        I guess all I really care about is the pingenator test output, so
-#        perhaps switch to a --verbose=N setup where we include all debug if
-#        verbose>1, pingenator output if verbose>0, and nothing but warnings
-#        and routing commands if verbose=0.
-#
-# FIXME: Also, add ability to count failures so we can only switch gw if 2 or 3
-#        cycles of fail have happened.  To avoid flipping back and forth
-#        between two crappy WAN interfaces.
-#
-#        I guess we should also count successes before switching to a gw.  So,
-#        require N consecutive successfull pingenator tests before enabling a
-#        gateway.
+#        I guess if we do this, we should also count successes before switching
+#        to a gw.  So, require N consecutive successfull pingenator tests
+#        before enabling a gateway.
 #
 # FIXME: Add config for controlling pingenator's --success parameter, in case
 #        "any response" isn't a good success indicator.
+#
+# FIXME: Reorg to check all possible gateways prior to picking one.  In other
+#        words, monitor and record stats for all WAN interfaces every run, then
+#        check to see if our gw is working and switch.  This was we can add
+#        email alerts for failed backup WAN interfaces.
 #
 
 
@@ -240,6 +236,7 @@ remove_all_managed_routes()
 
 check_ifaces()
 {
+    good_ifaces=
     for iface in $*; do
         decho checking iface: $iface
         
@@ -269,11 +266,20 @@ check_ifaces()
         # get the device name
         dev=$(iface_get_devname $iface)
         decho dev: $dev
+        eval ${iface}_dev=$dev
         
         # figure out routes, first from manual config, then from nm info
+        #
+        # FIXME: this route check failing (currently resuting in WARNING: no
+        #        routes for $iface), at leats for my setup, is really implying
+        #        that the interface didn't raise successfully.
+        #
         v=${iface}_routes
         routes=$(echo ${!v} | tr ',' ' ')
-        [ -z "$routes" ] && routes=$(iface_get_routes $iface)
+        if [ -z "$routes" ]; then
+            routes=$(iface_get_routes $iface)
+            eval ${iface}_routes=\"$routes\"
+        fi
         if [ -z "$routes" ]; then
             echo "WARNING: no routes for $iface"
             continue
@@ -305,87 +311,152 @@ check_ifaces()
         #       temporary outage.
         #
         if ! ip_is_good_gw ${r[1]}; then
+            eval ${iface}_is_good=
             if [ -n "$opt_dryrun" ]; then
-                echo "$(timestamp): Interface $iface is not a good gateway, not lowering because --dry-run"
+                decho "$(timestamp): Interface $iface is not a good gateway, not lowering because --dry-run"
             else
-                echo "$(timestamp): Interface $iface is not a good gateway, lowering"
+                # FIXME: maybe only warn if interface was up when we started?
+                #        otherwise, if cable is down, every single run raises,
+                #        tests, fails, and lowers with a bunch of error
+                #        messages.
+                #
+                decho "$(timestamp): Interface $iface is not a good gateway, lowering"
                 nmcli con down $iface >/dev/null 2>&1
             fi
             continue
         fi
 
-        # Ok, we've got a winner!
-        
-        # check if the route is already there
-        #
-        # NOTE: it doesn't hurt to add it a second time, but we want the
-        #       output of this script to be silent if nothing needed to be
-        #       changed.
-        #
-        decho "interface $iface is a usable gateway, processing routes"
-        for ((i=0; i<${#r[@]}; i+=2)); do
-            #echo ip route show ${r[i]} via ${r[i+1]} dev $dev
-            #blarg=$(ip route show ${r[i]} via ${r[i+1]} dev $dev)
-            #echo blarg: $blarg
-            if [ -z "$(ip route show ${r[i]} via ${r[i+1]} dev $dev)" ]; then
-                # we're really modifying the routing table, clear out all
-                # managed routes first
-                gw_modified=y
-                remove_all_managed_routes $*
-                go="ip route add ${r[i]} via ${r[i+1]} dev $dev"
-                echo $(timestamp): $go
-                deval $go
-            fi
-        done
-
-        # check for changed public ip address
-        #
-        # NOTE: This can happen even if we haven't changed our actual gw here,
-        #       if the gw has gotten a new public IP from the ISP for example.
-        #       This happens quite frequently with 4G and StarLink.
-        #
-        # NOTE: `ip_cur` gets stored as `ip_prev` in our state file on exit,
-        #       and parsed at startup, so `ip_prev` should already be set (or
-        #       empty if this is the first ever run).
-        #
-        # FIXME: Hm... I have twice now (in less then 4 hours of testing) seen
-        #        the Netgear 4g modem go crazy with public ip changing every
-        #        single run until I connect via TeamViewer to make a lot of
-        #        traffic.  Maybe emailing every time is a bad idea?
-        #
-        # FIXME: Yeah, the Peplink one does it, too.  Just constantly changing
-        #        IP every single time I check.  I believe this is normal, and
-        #        the carrier isn't actually even assigning us in IP until there
-        #        is traffic.  If I log in via TeamViewer and start doing
-        #        bandwidth tests the IP stabilizes... until a few minutes after
-        #        I stop.  At least for now, I'm not going to have this trigger
-        #        an alert email.  Relying on ssh access via a known 4g IP is
-        #        clearly not only a bad idea, it's going to prove to be
-        #        impossible.
-        #
-        decho "checking $iface's public ip"
-        ip_cur=$(host myip.opendns.com resolver1.opendns.com | awk '/^myip.opendns.com/ {print $NF}')
-        if [ "$ip_cur" != "$ip_prev" ]; then
-            echo "$(timestamp): New public IP detected! Was $ip_prev, now $ip_cur"
-            # set gw_modified so we get alerts
-            #
-            # NOTE: Nope, see FIXMEs above.
-            #
-            #gw_modified=y
-
-        fi
-
-        break
+        # it's good
+        eval ${iface}_is_good=yes
+        good_ifaces+=" $iface"
 
     done
 }
 
 
+review_ifaces()
+{
+    decho ifaces: $*
+    decho good_ifaces: $good_ifaces
+
+    send_alert=
+    for iface in $*; do
+        decho iface: $iface
+        is_good_k=${iface}_is_good
+        is_good=${!is_good_k}
+        decho is_good: $is_good
+        was_good_k=${iface}_was_good
+        was_good=${!was_good_k}
+        decho was_good: $was_good
+        if [ -n "$was_good" -a -z "$is_good" ]; then
+            echo $(timestamp): interface $iface was good previously, but is now bad
+            send_alert=y
+        elif [ -n "$is_good" -a -z "$was_good" ]; then
+            echo $(timestamp): interface $iface was bad previously, but is now good
+            send_alert=y
+        fi
+    done
+}
+
+
+set_gw()
+{
+    # we appended good interfaces in the order of preference specified in the
+    # config file, so the most preferable good gateway interface is the first
+    # one. conventient.
+    good_iface_list=($good_ifaces)
+    iface=${good_iface_list[0]}
+    decho "best iface: $iface"
+
+    # look up all the variables for the "best" interface
+    dev_k=${iface}_dev
+    dev=${!dev_k}
+    routes_k=${iface}_routes
+    routes=(${!routes_k})
+    decho "dev=$dev, routes=${routes[*]}"
+
+    # check if the route is already there
+    #
+    # NOTE: it doesn't hurt to add it a second time, but we want the
+    #       output of this script to be silent if nothing needed to be
+    #       changed.
+    #
+    decho "interface $iface is the best gateway, processing routes"
+    # FIXME: This is parsing over a list of routes (specified as pairs of
+    #        "network gw"), but has really only been tested when there's a
+    #        single route specified.  In other words, it probably doesn't work
+    #        if an interface provides multiple routes
+    #
+    # FIXME: instead of this check, should we just believe our status variables
+    #        (e.g. iface_was_good)?
+    #
+    for ((i=0; i<${#routes[@]}; i+=2)); do
+        #echo ip route show ${routes[i]} via ${routes[i+1]} dev $dev
+        #blarg=$(ip route show ${routes[i]} via ${routes[i+1]} dev $dev)
+        #echo blarg: $blarg
+        if [ -z "$(ip route show ${routes[i]} via ${routes[i+1]} dev $dev)" ]; then
+            # we're really modifying the routing table, clear out all
+            # managed routes first
+            gw_modified=y
+            remove_all_managed_routes $iface_list
+            go="ip route add ${routes[i]} via ${routes[i+1]} dev $dev"
+            echo $(timestamp): $go
+            deval $go
+        fi
+    done
+
+    # check for changed public ip address
+    #
+    # NOTE: This can happen even if we haven't changed our actual gw here,
+    #       if the gw has gotten a new public IP from the ISP for example.
+    #       This happens quite frequently with 4G and StarLink.
+    #
+    # NOTE: `ip_cur` gets stored as `ip_prev` in our state file on exit,
+    #       and parsed at startup, so `ip_prev` should already be set (or
+    #       empty if this is the first ever run).
+    #
+    # FIXME: Hm... I have twice now (in less then 4 hours of testing) seen
+    #        the Netgear 4g modem go crazy with public ip changing every
+    #        single run until I connect via TeamViewer to make a lot of
+    #        traffic.  Maybe emailing every time is a bad idea?
+    #
+    # FIXME: Yeah, the Peplink one does it, too.  Just constantly changing
+    #        IP every single time I check.  I believe this is normal, and
+    #        the carrier isn't actually even assigning us in IP until there
+    #        is traffic.  If I log in via TeamViewer and start doing
+    #        bandwidth tests the IP stabilizes... until a few minutes after
+    #        I stop.  At least for now, I'm not going to have this trigger
+    #        an alert email.  Relying on ssh access via a known 4g IP is
+    #        clearly not only a bad idea, it's going to prove to be
+    #        impossible.
+    #
+    decho "checking $iface's public ip"
+    ip_cur=$(host myip.opendns.com resolver1.opendns.com | awk '/^myip.opendns.com/ {print $NF}')
+    if [ "$ip_cur" != "$ip_prev" ]; then
+        echo "$(timestamp): New public IP detected! Was $ip_prev, now $ip_cur"
+        # set gw_modified so we get alerts
+        #
+        # NOTE: Nope, see FIXMEs above.
+        #
+        #gw_modified=y
+    fi
+}
+
+
 write_state()
 {
+    [ -n "$ip_cur" ] && ip_prev=$ip_cur
+
     cat > $state <<EOF
-ip_prev=$ip_cur
+ip_prev=$ip_prev
 EOF
+    for iface in $iface_list; do
+        k_is_good=${iface}_is_good
+        v_is_good=${!k_is_good}
+        cat >> $state <<EOF
+${iface}_was_good=$v_is_good
+EOF
+    done
 }
 
 
@@ -522,10 +593,14 @@ deval trap write_state EXIT
 
 gw_modified=
 check_ifaces $iface_list
+review_ifaces $iface_list
+set_gw
 
 # If we actually changed something, mail results (if configured)
 if [ -n "$gw_modified" -a -n "$opt_mail" ]; then
-    mail -s "$(basename $0): gateway modified" $opt_mail -E 'set nonullbodymsg' --content-type=text/plain -A $log </dev/null
+    mail -s "$(basename $0): $(hostname) gateway modified" $opt_mail -E 'set nonullbodymsg' --content-type=text/plain -A $log </dev/null
+elif [ -n "$send_alert" -a -n "$opt_mail" ]; then
+    mail -s "$(basename $0): $(hostname) alert" $opt_mail -E 'set nonullbodymsg' --content-type=text/plain -A $log </dev/null
 fi
 
 go="rm -f $lock"
