@@ -465,7 +465,20 @@ set_gw()
     #
     decho "checking $iface's public ip"
     ip_cur=$(host myip.opendns.com resolver1.opendns.com | awk '/^myip.opendns.com/ {print $NF}')
-    if [ "$ip_cur" != "$ip_prev" ]; then
+    # FIXME: check ip_cur... it shouldn't be empty, but is sometimes on
+    #        aragorn?  oh boy, it's happening on srv-route2 also.  and elrond.
+    #        Actually, i'm thinking this was a 1 minute outage at opendns.com.
+    #        all 3 boxes failed 6 sequential ip resolutions after each passing
+    #        their pingenator test for the exact same 1 minute timespan.
+    #
+    #        i guess we should warn if it's empty, since we've already verified
+    #        the gw works?  or just quietly ignore it since the ip changing has
+    #        turned out to be something we can't really depend on tracking in
+    #        real-time?
+    #
+    if [ -z "$ip_cur" ]; then
+        echo "$(timestamp): Public IP couldn't be detected, resolver problems?"
+    elif [ "$ip_cur" != "$ip_prev" ]; then
         echo "$(timestamp): New public IP detected! Was $ip_prev, now $ip_cur"
         # set gw_modified so we get alerts
         #
