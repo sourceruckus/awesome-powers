@@ -25,6 +25,12 @@
 # FIXME: Add config for controlling pingenator's --success parameter, in case
 #        "any response" isn't a good success indicator.
 #
+# FIXME: Add a bad counter to state, so we can adjust noisyness per interface
+#        (e.g. vlan2_bad_alert_threshold=3 to not alert unless the vlan2
+#        interface has been bad for 3 consecutive runs).
+#
+# FIXME: propperly describe/document all the possible variables in $conf
+#
 
 
 log=$0.log
@@ -324,6 +330,7 @@ check_ifaces()
         #
         if ! ip_is_good_gw ${r[1]}; then
             eval ${iface}_is_good=
+            eval ${iface}_bad_count_cur=$((${iface}_bad_count_prev+1))
             if [ -n "$opt_dryrun" ]; then
                 decho "$(timestamp): Interface $iface is not a good gateway, not lowering because --dry-run"
             else
@@ -335,6 +342,7 @@ check_ifaces()
 
         # it's good
         eval ${iface}_is_good=yes
+        eval ${iface}_bad_count_cur=0
         good_ifaces+=" $iface"
 
     done
@@ -355,12 +363,29 @@ review_ifaces()
         was_good_k=${iface}_was_good
         was_good=${!was_good_k}
         decho was_good: $was_good
+        bad_count_cur_k=${iface}_bad_count_cur
+        bad_count_cur=${!bad_count_cur_k}
+        decho bad_count_cur: $bad_count_cur
+        bad_count_prev_k=${iface}_bad_count_prev
+        bad_count_prev=${!bad_count_prev_k}
+        decho bad_count_prev: $bad_count_prev
+        bad_alert_threshold_k=${iface}_bad_alert_threshold
+        bad_alert_threshold=${!bad_alert_threshold_k}
+        [ -z "$bad_alert_threshold" ] && bad_alert_threshold=0
+        decho bad_alert_threshold: $bad_alert_threshold
         if [ -n "$was_good" -a -z "$is_good" ]; then
             echo $(timestamp): interface $iface was good previously, but is now bad
-            send_alert=y
+            if [ $bad_count_cur -ge $bad_alert_threshold ]; then
+                send_alert=y
+            fi
         elif [ -n "$is_good" -a -z "$was_good" ]; then
             echo $(timestamp): interface $iface was bad previously, but is now good
-            send_alert=y
+            # compare against `prev` here, because we've already set `cur` back
+            # to 0, to make sure we send a follow-up alert upon recovery of an
+            # interface that we previously sent a failure alert for.
+            if [ $bad_count_prev -ge $bad_alert_threshold ]; then
+                send_alert=y
+            fi
         fi
     done
 }
@@ -465,8 +490,11 @@ EOF
     for iface in $iface_list; do
         k_is_good=${iface}_is_good
         v_is_good=${!k_is_good}
+        k_bad_count_cur=${iface}_bad_count_cur
+        v_bad_count_cur=${!k_bad_count_cur}
         cat >> $state <<EOF
 ${iface}_was_good=$v_is_good
+${iface}_bad_count_prev=$v_bad_count_cur
 EOF
     done
 }
