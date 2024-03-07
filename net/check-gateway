@@ -491,6 +491,12 @@ set_gw()
 
 write_state()
 {
+    # write state to alternate file if --dry-run
+    if [ -n "$opt_dryrun" ]; then
+        state=$state.tmp
+        decho "$(timestamp): Writing to alternate statefile $state because --dry-run"
+    fi
+
     # if these have been set, update the "previous" variables.  otherwise, just
     # leave the old previous values in place.
     [ -n "$gw_cur" ] && gw_prev=$gw_cur
@@ -641,8 +647,12 @@ deval $go
 if [ -f $state ]; then
     . $state
 fi
-# register at-exit func to update state file IF NOT DRYRUN
-deval trap write_state EXIT
+# register at-exit func to update state file
+#
+# NOTE: An alternate file is written to if --dry-run, so we always register the
+#       exit handler.
+#
+trap write_state EXIT
 
 gw_modified=
 check_ifaces $iface_list
