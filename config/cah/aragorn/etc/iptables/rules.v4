@@ -139,14 +139,6 @@ COMMIT
 -A INPUT -j REJECT --reject-with icmp-proto-unreachable
 
 
-# Internet reply forwarding policies
-#
-# Allow all replies to forward back to the appropriate interface.  No point in
-# dropping any of this, really.
-#
--A FORWARD -i xenbr0.2 -o xenbr0.20 -m state --state RELATED,ESTABLISHED -j ACCEPT
-
-
 # Internal network forwarding policies
 #
 # infrastructure.cah can go everywhere (CONFIRMED)
