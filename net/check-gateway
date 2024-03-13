@@ -281,6 +281,7 @@ check_ifaces()
             #        activation failed: Connection 'vlan3' is not available on
             #        the device eth0.3 at this time."
             #
+            eval ${iface}_bad_count_cur=$((${iface}_bad_count_prev+1))
             if [ -n "$opt_dryrun" ]; then
                 decho "$(timestamp): No routes for $iface, not lowering because --dry-run"
             else
