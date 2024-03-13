@@ -380,18 +380,26 @@ review_ifaces()
         bad_alert_threshold=${!bad_alert_threshold_k}
         [ -z "$bad_alert_threshold" ] && bad_alert_threshold=0
         decho bad_alert_threshold: $bad_alert_threshold
-        if [ -n "$was_good" -a -z "$is_good" ]; then
-            echo $(timestamp): interface $iface was good previously, but is now bad
-            if [ $bad_count_cur -ge $bad_alert_threshold ]; then
+        if [ -z "$is_good" ]; then
+            # not good now
+            if [ -n "$was_good" ]; then
+                echo $(timestamp): interface $iface is now bad
+            fi
+            if [ $bad_count_cur -eq $bad_alert_threshold ]; then
+                # NOTE: We compare w/ -eq instead of -ge so that only one alert
+                #       gets sent.
                 send_alert=y
             fi
-        elif [ -n "$is_good" -a -z "$was_good" ]; then
-            echo $(timestamp): interface $iface was bad previously, but is now good
-            # compare against `prev` here, because we've already set `cur` back
-            # to 0, to make sure we send a follow-up alert upon recovery of an
-            # interface that we previously sent a failure alert for.
-            if [ $bad_count_prev -ge $bad_alert_threshold ]; then
-                send_alert=y
+        else
+            # good now
+            if [ -z "$was_good" ]; then
+                echo $(timestamp): interface $iface is now good
+                # compare against `prev` here, because we've already set `cur` back
+                # to 0, to make sure we send a follow-up alert upon recovery of an
+                # interface that we previously sent a failure alert for.
+                if [ $bad_count_prev -ge $bad_alert_threshold ]; then
+                    send_alert=y
+                fi
             fi
         fi
     done
