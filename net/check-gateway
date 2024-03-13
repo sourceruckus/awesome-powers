@@ -13,23 +13,8 @@
 # NOTE: All output appended to logfile, which is then mailed and removed each
 #       night (log rotation and mailing is not this script's responsibility).
 #
-# FIXME: Perhaps add ability to count failures so we can only switch gw if 2 or
-#        3 cycles of fail have happened.  To avoid flipping back and forth
-#        between two crappy WAN interfaces.  Not sure I would really want to
-#        continue using a known bad WAN interface... so perhaps not?
-#
-#        I guess if we do this, we should also count successes before switching
-#        to a gw.  So, require N consecutive successfull pingenator tests
-#        before enabling a gateway.
-#
 # FIXME: Add config for controlling pingenator's --success parameter, in case
 #        "any response" isn't a good success indicator.
-#
-# FIXME: Add a bad counter to state, so we can adjust noisyness per interface
-#        (e.g. vlan2_bad_alert_threshold=3 to not alert unless the vlan2
-#        interface has been bad for 3 consecutive runs,
-#        vlan2_bad_fail_threshold=2 to not switch away from vlan2 unless 2
-#        consecutive bad runs).
 #
 # FIXME: propperly describe/document all the possible variables in $conf
 #
@@ -330,24 +315,37 @@ check_ifaces()
         #       our preferred WAN interface automatically in case of a
         #       temporary outage.
         #
-        # FIXME: don't flag bad if bad_count_cur < bad_fail_threshold... but
-        #        warn
-        #
         if ! ip_is_good_gw ${r[1]}; then
-            eval ${iface}_is_good=
             eval ${iface}_bad_count_cur=$((${iface}_bad_count_prev+1))
-            if [ -n "$opt_dryrun" ]; then
-                decho "$(timestamp): Interface $iface is not a good gateway, not lowering because --dry-run"
+            v=${iface}_bad_count_cur
+            bad_count_cur=${!v}
+            [ -z "$bad_count_cur" ] && bad_count_cur=0
+            decho bad_count_cur: $bad_count_cur
+            v=${iface}_bad_fail_threshold
+            bad_fail_threshold=${!v}
+            [ -z "$bad_fail_threshold" ] && bad_fail_threshold=1
+            decho bad_fail_threshold: $bad_fail_threshold
+            if [ $bad_count_cur -lt $bad_fail_threshold ]; then
+                # haven't reached fail threshold yet, treat interface as good
+                # (even though it's "bad").
+                echo "$(timestamp): Interface $iface failed gateway check but hasn't reached fail threshold, treating as good ($bad_count_cur<$bad_fail_threshold)."
             else
-                decho "$(timestamp): Interface $iface is not a good gateway, lowering"
-                nmcli con down $iface >/dev/null 2>&1
+                eval ${iface}_is_good=
+                if [ -n "$opt_dryrun" ]; then
+                    decho "$(timestamp): Interface $iface is not a good gateway, not lowering because --dry-run"
+                else
+                    decho "$(timestamp): Interface $iface is not a good gateway, lowering"
+                    nmcli con down $iface >/dev/null 2>&1
+                fi
+                continue
             fi
-            continue
+        else
+            # it's really good, reset the bad_count
+            eval ${iface}_bad_count_cur=0
         fi
 
-        # it's good
+        # it's good (or hasn't reached fail threshold yet)
         eval ${iface}_is_good=yes
-        eval ${iface}_bad_count_cur=0
         good_ifaces+=" $iface"
 
     done
