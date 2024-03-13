@@ -27,7 +27,9 @@
 #
 # FIXME: Add a bad counter to state, so we can adjust noisyness per interface
 #        (e.g. vlan2_bad_alert_threshold=3 to not alert unless the vlan2
-#        interface has been bad for 3 consecutive runs).
+#        interface has been bad for 3 consecutive runs,
+#        vlan2_bad_fail_threshold=2 to not switch away from vlan2 unless 2
+#        consecutive bad runs).
 #
 # FIXME: propperly describe/document all the possible variables in $conf
 #
@@ -328,6 +330,9 @@ check_ifaces()
         #       our preferred WAN interface automatically in case of a
         #       temporary outage.
         #
+        # FIXME: don't flag bad if bad_count_cur < bad_fail_threshold... but
+        #        warn
+        #
         if ! ip_is_good_gw ${r[1]}; then
             eval ${iface}_is_good=
             eval ${iface}_bad_count_cur=$((${iface}_bad_count_prev+1))
@@ -365,9 +370,11 @@ review_ifaces()
         decho was_good: $was_good
         bad_count_cur_k=${iface}_bad_count_cur
         bad_count_cur=${!bad_count_cur_k}
+        [ -z "$bad_count_cur" ] && bad_count_cur=0
         decho bad_count_cur: $bad_count_cur
         bad_count_prev_k=${iface}_bad_count_prev
         bad_count_prev=${!bad_count_prev_k}
+        [ -z "$bad_count_prev" ] && bad_count_prev=0
         decho bad_count_prev: $bad_count_prev
         bad_alert_threshold_k=${iface}_bad_alert_threshold
         bad_alert_threshold=${!bad_alert_threshold_k}
