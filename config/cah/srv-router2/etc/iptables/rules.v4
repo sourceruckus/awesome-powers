@@ -99,6 +99,7 @@ COMMIT
 -A INPUT -i eth0.40 -j ACCEPT
 -A INPUT -i eth0.99 -j ACCEPT
 -A INPUT -i wg-cah -j ACCEPT
+-A INPUT -i wg-ruckus -j ACCEPT
 
 
 # drop anything we've marked for dropping
