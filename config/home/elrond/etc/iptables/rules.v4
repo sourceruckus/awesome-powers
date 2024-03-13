@@ -102,6 +102,7 @@ COMMIT
 #-A INPUT -i wg-labriola -j ACCEPT
 -A INPUT -i wg-cah1 -j ACCEPT
 -A INPUT -i wg-cah2 -j ACCEPT
+-A INPUT -i wg-ruckus -j ACCEPT
 
 
 # WireGuard policy
