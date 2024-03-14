@@ -18,6 +18,9 @@
 log=$0.log
 lock=$0.lock
 
+# exit silently if we're already running (e.g., via cron)
+[ -e $lock ] && exit 0
+
 
 # debug echo - only prints if enabled
 decho()
