@@ -260,7 +260,27 @@ check_ifaces()
         dev=$(iface_get_devname $iface)
         decho dev: $dev
         eval ${iface}_dev=$dev
-        
+
+        # lookup bad_fail_threshold
+        v=${iface}_bad_fail_threshold
+        bad_fail_threshold=${!v}
+        if [ -z "$bad_fail_threshold" ]; then
+            # if unset, pick a default.
+            #
+            # NOTE: Our default for the current gateway interface is 2, to
+            #       avoid switching AWAY from an interface with just a single
+            #       ping test failure.  Default for all other interaces is 1,
+            #       to avoid switching TO an interface that just failed a ping
+            #       test.
+            #
+            if [ "$gw_iface_prev" = "$iface" ]; then
+                bad_fail_threshold=2
+            else
+                bad_fail_threshold=1
+            fi
+        fi
+        decho bad_fail_threshold: $bad_fail_threshold
+
         # figure out routes, first from manual config, then from nm info
         v=${iface}_routes
         routes=$(echo ${!v} | tr ',' ' ')
@@ -325,10 +345,6 @@ check_ifaces()
             bad_count_cur=${!v}
             [ -z "$bad_count_cur" ] && bad_count_cur=0
             decho bad_count_cur: $bad_count_cur
-            v=${iface}_bad_fail_threshold
-            bad_fail_threshold=${!v}
-            [ -z "$bad_fail_threshold" ] && bad_fail_threshold=1
-            decho bad_fail_threshold: $bad_fail_threshold
             if [ $bad_count_cur -lt $bad_fail_threshold ]; then
                 # haven't reached fail threshold yet, treat interface as good
                 # (even though it's "bad").
@@ -415,6 +431,7 @@ set_gw()
     # one. conventient.
     good_iface_list=($good_ifaces)
     iface=${good_iface_list[0]}
+    gw_iface_cur=$iface
     decho "best iface: $iface"
 
     # look up all the variables for the "best" interface
@@ -423,7 +440,7 @@ set_gw()
     routes_k=${iface}_routes
     routes=(${!routes_k})
     decho "dev=$dev, routes=${routes[*]}"
-    gw_cur=${routes[1]}
+    gw_ip_cur=${routes[1]}
 
     # check if the route is already there
     #
@@ -438,7 +455,7 @@ set_gw()
     #        if an interface provides multiple routes
     #
     # FIXME: instead of this check, should we just believe our status variables
-    #        (e.g. gw_prev)?
+    #        (e.g. gw_ip_prev)?
     #
     for ((i=0; i<${#routes[@]}; i+=2)); do
         #echo ip route show ${routes[i]} via ${routes[i+1]} dev $dev
@@ -461,9 +478,9 @@ set_gw()
     #       if the gw has gotten a new public IP from the ISP for example.
     #       This happens quite frequently with 4G and StarLink.
     #
-    # NOTE: `ip_cur` gets stored as `ip_prev` in our state file on exit,
-    #       and parsed at startup, so `ip_prev` should already be set (or
-    #       empty if this is the first ever run).
+    # NOTE: `pub_ip_cur` gets stored as `pub_ip_prev` in our state file on
+    #       exit, and parsed at startup, so `pub_ip_prev` should already be set
+    #       (or empty if this is the first ever run).
     #
     # FIXME: Hm... I have twice now (in less then 4 hours of testing) seen
     #        the Netgear 4g modem go crazy with public ip changing every
@@ -481,8 +498,8 @@ set_gw()
     #        impossible.
     #
     decho "checking $iface's public ip"
-    ip_cur=$(host myip.opendns.com resolver1.opendns.com | awk '/^myip.opendns.com/ {print $NF}')
-    # FIXME: check ip_cur... it shouldn't be empty, but is sometimes on
+    pub_ip_cur=$(host myip.opendns.com resolver1.opendns.com | awk '/^myip.opendns.com/ {print $NF}')
+    # FIXME: check pub_ip_cur... it shouldn't be empty, but is sometimes on
     #        aragorn?  oh boy, it's happening on srv-route2 also.  and elrond.
     #        Actually, i'm thinking this was a 1 minute outage at opendns.com.
     #        all 3 boxes failed 6 sequential ip resolutions after each passing
@@ -493,10 +510,10 @@ set_gw()
     #        turned out to be something we can't really depend on tracking in
     #        real-time?
     #
-    if [ -z "$ip_cur" ]; then
+    if [ -z "$pub_ip_cur" ]; then
         echo "$(timestamp): Public IP couldn't be detected, resolver problems?"
-    elif [ "$ip_cur" != "$ip_prev" ]; then
-        echo "$(timestamp): New public IP detected! Was $ip_prev, now $ip_cur"
+    elif [ "$pub_ip_cur" != "$pub_ip_prev" ]; then
+        echo "$(timestamp): New public IP detected! Was $pub_ip_prev, now $pub_ip_cur"
         # set gw_modified so we get alerts
         #
         # NOTE: Nope, see FIXMEs above.
@@ -516,12 +533,14 @@ write_state()
 
     # if these have been set, update the "previous" variables.  otherwise, just
     # leave the old previous values in place.
-    [ -n "$gw_cur" ] && gw_prev=$gw_cur
-    [ -n "$ip_cur" ] && ip_prev=$ip_cur
+    [ -n "$gw_ip_cur" ] && gw_ip_prev=$gw_ip_cur
+    [ -n "$gw_iface_cur" ] && gw_iface_prev=$gw_iface_cur
+    [ -n "$pub_ip_cur" ] && pub_ip_prev=$pub_ip_cur
 
     cat > $state <<EOF
-gw_prev=$gw_prev
-ip_prev=$ip_prev
+gw_ip_prev=$gw_ip_prev
+gw_iface_prev=$gw_iface_prev
+pub_ip_prev=$pub_ip_prev
 EOF
     for iface in $iface_list; do
         k_is_good=${iface}_is_good
