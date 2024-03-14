@@ -7,12 +7,15 @@
 # Licensed under the GPLv3. See the file COPYING for details. 
 #
 # Mail logfile to $MAILTO, then remove logfile.  The logfile is assumed to be
-# the name of the specified script w/ .log at the end.
+# the name of the specified script w/ .log at the end.  If present, the current
+# .state file is also attached to the email (but not removed).
 #
 
 prog=$1
 log=$prog.log
 lock=$prog.lock
+state=$prog.state
+
 
 if [ -z "$MAILTO" ]; then
     echo "ERROR: \$MAILTO not set"
@@ -36,27 +39,32 @@ while [ -f $lock ]; do
     sleep 1
 done
 
-# just do nothing if log missing or empty
-if [ ! -s $log ]; then
-    exit 0
+# check for logfile
+if [ -f $log ]; then
+    # rotate the logfile
+    #
+    # FIXME: This is definately not atomic.  A subsequent run could swoop in and
+    #        start writing to the logfile right now and mess things up...  We'd
+    #        better just make sure the program starts BEFORE we try to
+    #        mail-and-purge it's logfile (i.e., don't schedule both to happen on
+    #        the hour)
+    #
+    # NOTE: We copy and then truncate the logfile so that if anyone is tailing it,
+    #       they get a "file truncated" indication.
+    #
+    cp $log $log.sending
+    echo -n >$log
+
+    attach_log="-A $log.sending"
 fi
 
-# rotate the logfile
-#
-# FIXME: This is definately not atomic.  A subsequent run could swoop in and
-#        start writing to the logfile right now and mess things up...  We'd
-#        better just make sure the program starts BEFORE we try to
-#        mail-and-purge it's logfile (i.e., don't schedule both to happen on
-#        the hour)
-#
-# NOTE: We copy and then truncate the logfile so that if anyone is tailing it,
-#       they get a "file truncated" indication.
-#
-cp $log $log.sending
-echo >$log
+# check for state file
+if [ -f $state ]; then
+    attach_state="-A $state"
+fi
 
 # mail the logfile
-mail -s "awesome logfile from $(hostname): $(basename $prog)" $MAILTO -E 'set nonullbodymsg' --content-type=text/plain -A $log.sending </dev/null
+mail -s "awesome logfile from $(hostname): $(basename $prog)" $MAILTO -E 'set nonullbodymsg' --content-type=text/plain $attach_log $attach_state </dev/null
 
 # remove the logfile
 rm $log.sending
