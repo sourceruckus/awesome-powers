@@ -35,5 +35,18 @@ AP=/scrap/awesome-powers
 #
 5 0 * * * root MAILTO=$MAILTO $AP/logs/mail-and-purge-logfile $AP/net/check-gateway-cah
 
+# poke NetworkManager in the eye
+#
+# NOTE: My hosts at CAH keep getting NetworkManager into a borky state where it
+#       continually says vlan whatever is not available "at this time".
+#       Restarting the NetworkManager service fixes the problem 100% of the
+#       time.  Let's preemptively restart it one a day just in case.
+#
+# FIXME: This was happening when they were 18.04, and I haven't seen it on
+#        20.04 or newer... but I haven't really looked for it either.  Remove
+#        this once I'm sure we no longer need it
+#
+10 0 * * * root systemctl restart NetworkManager
+
 # remove stale lock files during boot
 @reboot root rm -f $AP/net/check-gateway-cah.lock
