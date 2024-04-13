@@ -511,9 +511,9 @@ set_gw()
     #        real-time?
     #
     if [ -z "$pub_ip_cur" ]; then
-        echo "$(timestamp): Public IP couldn't be detected, resolver problems?"
+        decho "$(timestamp): Public IP couldn't be detected, resolver problems?"
     elif [ "$pub_ip_cur" != "$pub_ip_prev" ]; then
-        echo "$(timestamp): New public IP detected! Was $pub_ip_prev, now $pub_ip_cur"
+        decho "$(timestamp): New public IP detected! Was $pub_ip_prev, now $pub_ip_cur"
         # set gw_modified so we get alerts
         #
         # NOTE: Nope, see FIXMEs above.
