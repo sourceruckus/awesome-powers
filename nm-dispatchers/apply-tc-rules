@@ -1,4 +1,4 @@
-#!/bin/sh -e
+#!/bin/bash -e
 #
 # Awesome Powers - scripts & config files of pure awesomeness
 #
@@ -11,6 +11,8 @@
 
 AP=/scrap/awesome-powers
 
+shopt -s extglob
+
 # figure out what our config files should be named based on the name we were
 # invoked as, assuming it's "apply-SITENAME-tc-rules" and config files are
 # "net/SITENAME-INTNAME-tc-rules" or "net/SITENAME-HOSTNAME-INTNAME-tc-rules".
@@ -18,7 +20,10 @@ SITE=$(basename $0 | sed 's|^apply-||' |sed 's|-tc-rules$||')
 HOSTNAME=$(hostname)
 RULES=$AP/net/$SITE-$HOSTNAME-*-tc-rules
 if [ ! -f $(echo $RULES | awk '{print $1}') ]; then
-    RULES=$AP/net/$SITE-*-tc-rules
+    # FIXME: Using extglob feature of bash here, because I couldn't quite get
+    #        the globbing right otherwise... don't love it, but it's working
+    #        now.
+    RULES=$AP/net/$SITE-!(*-*)-tc-rules
     if [ ! -f $(echo $RULES | awk '{print $1}') ]; then
         # just quietly exit
         exit 0
@@ -29,6 +34,7 @@ fi
 case "$2" in
     up)
         echo "applying $SITE tc-rules for $CONNECTION_ID ($DEVICE_IP_IFACE)"
+        echo "RULES: $RULES"
         # look through tc-rules scripts for one with a matching device
         gotit=
         for x in $RULES; do
