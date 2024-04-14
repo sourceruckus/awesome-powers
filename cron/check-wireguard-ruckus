@@ -1,0 +1,42 @@
+# -*- mode: sh -*-
+
+MAILTO=michael.d.labriola@gmail.com
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+AP=/scrap/awesome-powers
+
+# periodic wireguard checking (and logfile appending)
+#
+# NOTE: We have to use this instead of the nm-dispatcher on hosts that use
+#       check-gateway to manage WAN interfaces, as those systems are configured
+#       to NOT add routes via nm, which breaks the dispatcher check.
+#
+# FIXME: This means the extra fun DNS management being done by the
+#        nm-dispatcher is NOT getting done... do we need that?
+#
+* * * * * root $AP/net/check-wireguard-ruckus --mail $MAILTO
+
+# end of day analysis and log rotation
+#
+# FIXME: We should add analysis that at least counts up how many "NOT
+#        reachable" and "IS reachable" entries we had during the day.  Or maybe
+#        just "NOT reachable".  Would be even better if we logged how many
+#        times we transititioned from primary to secondary... but the simply
+#        tally would do.
+#
+#1 0 * * * root MODE=analyze $AP/net/check-gateway
+#
+# FIXME: Hmm... we're not quite adequately fencing this at present.  It's not a
+#        problem in our other scripts, because they run hourly... but
+#        check-gateway runs every minute, so we can't schedule the check,
+#        analyze, and rotate scripts to run at different times.  The result,
+#        all the scripts are running at the same time and our logfile gets
+#        truncated rudely.
+#
+#        Would need to add a .maillock file in mail-and-purge-logfile and check
+#        for it in check-gateway.
+#
+5 0 * * * root MAILTO=$MAILTO $AP/logs/mail-and-purge-logfile $AP/net/check-wireguard-ruckus
+
+# remove stale lock files during boot
+@reboot root rm -f $AP/net/check-wireguard-ruckus.lock
