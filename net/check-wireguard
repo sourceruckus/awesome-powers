@@ -247,16 +247,11 @@ fi
 decho "$(timestamp): internet_ip: $internet_ip"
 
 # figure out path to pingenator
-#
-# FIXME: as soon as pingenator has an official release, replace this with a
-#        check in PATH and get rid of the pingenator submodule
-#
-pingenator=$(dirname $0)/../subprojects/pingenator/src/pingenator
+pingenator=$(which pingenator)
 if [ ! -f $pingenator ]; then
     echo "ERROR: $pingenator not found"
     exit 1
 fi
-pingenator=$(realpath $pingenator)
 decho "pingenator: $pingenator"
 
 # lock the lockfile!
