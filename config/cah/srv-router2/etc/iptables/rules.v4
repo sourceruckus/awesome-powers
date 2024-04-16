@@ -231,6 +231,8 @@ COMMIT
 -A FORWARD -i eth0.40 -o eth0.30 -m mac --mac-source 44:8e:12:06:ff:1e -j ACCEPT
 # office laptops/workstations connected via wifi will need access as well
 #
+# aldarion
+-A FORWARD -i eth0.40 -o eth0.30 -m mac --mac-source 9c:b6:d0:98:1c:5f -j ACCEPT
 # witherwings
 -A FORWARD -i eth0.40 -o eth0.30 -m mac --mac-source f0:d4:15:cd:cb:9d -j ACCEPT
 # fawkes
