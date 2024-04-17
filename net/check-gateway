@@ -179,6 +179,7 @@ iface_remove_routes()
 
     # get the device name
     dev=$(iface_get_devname $iface)
+    # FIXME: check for empty dev
     decho "looking up routes provided by $iface ($dev)"
     
     # figure out routes, first from manual config, then from nm info
@@ -258,6 +259,7 @@ check_ifaces()
 
         # get the device name
         dev=$(iface_get_devname $iface)
+        # FIXME: check for empty dev
         decho dev: $dev
         eval ${iface}_dev=$dev
 
@@ -437,6 +439,13 @@ set_gw()
     # look up all the variables for the "best" interface
     dev_k=${iface}_dev
     dev=${!dev_k}
+    if [ -z "$dev" ]; then
+        echo "$(timestamp): WARNING: dev empty, trying lookup again"
+        dev=$(iface_get_devname $iface)
+    elif [ -z "$dev" ]; then
+        echo "$(timestamp): ERROR: failed to lookup dev name"
+        return
+    fi
     routes_k=${iface}_routes
     routes=(${!routes_k})
     decho "dev=$dev, routes=${routes[*]}"
@@ -465,6 +474,7 @@ set_gw()
             # we're really modifying the routing table, clear out all
             # managed routes first
             gw_modified=y
+            # FIXME: don't do this if $dev is empty!
             remove_all_managed_routes $iface_list
             go="ip route add ${routes[i]} via ${routes[i+1]} dev $dev"
             echo $(timestamp): $go
