@@ -278,6 +278,10 @@ check_ifaces()
                 nmcli con up $iface >/dev/null 2>&1
             fi
         fi
+        if [ "$(iface_get_state $iface)" != "activated" ]; then
+            decho "$(timestamp): Skipping $iface after failed activation"
+            continue
+        fi
 
         # get the device name
         dev=$(iface_get_devname $iface)
