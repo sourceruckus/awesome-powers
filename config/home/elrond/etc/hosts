@@ -17,7 +17,8 @@ ff02::2 ip6-allrouters
 10.42.20.6 haldir
 
 # acquired via dhcp, but static because crappy printer configs keep flaking out
-10.42.20.114 printer
+10.42.20.114 printer-old
+10.42.20.120 printer
 
 # statically assigned, because it comes up prior to the dhcp server
 10.42.20.201 gandalf
