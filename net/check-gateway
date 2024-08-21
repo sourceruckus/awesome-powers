@@ -25,7 +25,16 @@ lock=$0.lock
 state=$0.state
 
 # exit silently if we're already running (e.g., via cron)
-[ -e $lock ] && exit 0
+if [ -e $lock ]; then
+    # actually, if the lock is more than 5 minutes old, assume we've crashed
+    # and remove the lockfile
+    if [ -n "$(find $lock -mmin +5)" ]; then
+        echo "$(timestamp): WARNING: removing stale lockfile $lock"
+        rm $lock
+    else
+        exit 0
+    fi
+fi
 
 
 # debug echo - only prints if enabled
