@@ -46,7 +46,11 @@ AP=/scrap/awesome-powers
 #        20.04 or newer... but I haven't really looked for it either.  Remove
 #        this once I'm sure we no longer need it
 #
-10 0 * * * root systemctl restart NetworkManager
+# FIXME: Pretty sure this is causing check-gateway to bork.  Add some real
+#        fencing later, but at least try to dodge check-gateway runs with a
+#        sleep for now.
+#
+10 0 * * * root sleep 5; systemctl restart NetworkManager
 
 # remove stale lock files during boot
 @reboot root rm -f $AP/net/check-gateway-labriola.lock

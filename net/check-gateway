@@ -467,6 +467,7 @@ set_gw()
     good_iface_list=($good_ifaces)
     iface=${good_iface_list[0]}
     gw_iface_cur=$iface
+    # FIXME: check for empty iface
     decho "best iface: $iface"
 
     # look up all the variables for the "best" interface
