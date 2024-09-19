@@ -268,7 +268,7 @@ check_wg
 
 # If we actually changed something, mail results (if configured)
 if [ -n "$modified" -a -n "$opt_mail" ]; then
-    mail -s "$(basename $0): modified" $opt_mail -E 'set nonullbodymsg' --content-type=text/plain -A $log </dev/null
+    mail -s "$(basename $0): $(hostname): modified" $opt_mail -E 'set nonullbodymsg' --content-type=text/plain -A $log </dev/null
 fi
 
 go="rm -f $lock"
