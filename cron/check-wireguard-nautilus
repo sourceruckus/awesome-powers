@@ -6,7 +6,13 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 AP=/scrap/awesome-powers
 
 # periodic wireguard checking (and logfile appending)
-* * * * * root $AP/net/check-wireguard-nautilus --mail $MAILTO
+#
+# NOTE: --mail sounds like fun, but if you have an extended WAN outage, these
+#       mails will pile up in your inbox.  For now, don't mail.  Perhaps we
+#       should make this script check for internet connectivity in general
+#       before checking the wg interface?
+#
+* * * * * root $AP/net/check-wireguard-nautilus
 
 # end of day analysis and log rotation
 #

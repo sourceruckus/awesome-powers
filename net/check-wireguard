@@ -254,6 +254,18 @@ if [ ! -f $pingenator ]; then
 fi
 decho "pingenator: $pingenator"
 
+# FIXME: add check_internet function to make sure we actually have internet
+#        connectivity before even trying the wireguard server.  Otherwise if we
+#        run this via cron w/ --mail at a high rate (e.g., every minute), we're
+#        going to pile up tons of outgoing mail flip-flopping the wireguard
+#        interface hopelessly while the internet is down.
+#
+#        should we do this before we even lock the lockfile?  I'm leaning
+#        towards treating no-internet as an error condition that prevents
+#        normal run, so that makes sense...  unless it might take too long to
+#        check internet connectivity.
+#
+
 # lock the lockfile!
 #
 # NOTE: This means if anything fails after this, we need to decide if we're
