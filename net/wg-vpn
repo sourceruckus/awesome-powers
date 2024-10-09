@@ -9,9 +9,9 @@
 # Script for raising/lowering WireGuard interface.  This is a slightly bigger
 # task than just using wg-quick because:
 #
-# 1. wg-quick uses resolvconf for DNS settings, and our system uses
-#    systemd-resolv, which has different syntax.  So, we can't let wg-quick do
-#    the DNS setup.
+# 1. wg-quick uses resolvconf for DNS settings, and our systems use resolvectl
+#    or systemd-resolv, which have different syntax.  So, we can't let wg-quick
+#    do the DNS setup.
 #
 # 2. While only one of the routers will have it's WireGuard interface up, there
 #    doesn't seem to be any feedback from wg-quick as to wether we are
@@ -70,10 +70,17 @@ try_interface()
     #       normal to not have systemd-resolved running, but the host's
     #       resolver will have to be configured manually.
     #
-    go="systemd-resolve -i $1 --set-dns=$DNS_IP"
-    for x in $DNS_SEARCH; do
-        go+=" --set-domain=$x"
-    done
+    if [ $(which resolvectl) ]; then
+        go="resolvectl dns $1 $DNS_IP"
+        if [ -n "$DNS_SEARCH" ]; then
+            go+="; resolvectl domain $1 $DNS_SEARCH"
+        fi
+    elif [ $(which systemd-resolve) ]; then
+        go="systemd-resolve -i $1 --set-dns=$DNS_IP"
+        for x in $DNS_SEARCH; do
+            go+=" --set-domain=$x"
+        done
+    fi
     echo $go
     eval $go
 
@@ -137,12 +144,18 @@ case $1 in
         start
         ;;
     status)
-        showit wg show
-        if [ "$(wg show | wc -l)" != 0 ]; then
-            showit ip addr show
-            showit route
-            showit systemd-resolve --status --no-pager
-        fi
+        for i in $INTERFACES; do
+            showit wg show $i
+            if [ "$(wg show $i 2>/dev/null | wc -l)" != 0 ]; then
+                showit ip addr show $i
+                showit "route | grep $i"
+                if [ $(which resolvectl) ]; then
+                    showit resolvectl status $i
+                elif [ $(which systemd-resolve) ]; then
+                    showit systemd-resolve --status --no-pager $i
+                fi
+            fi
+        done
         ;;
     *)
         echo "Usage: $0 {start|stop|restart|status}"
