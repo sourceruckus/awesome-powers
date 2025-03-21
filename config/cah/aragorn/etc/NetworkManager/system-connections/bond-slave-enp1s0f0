@@ -1,0 +1,12 @@
+[connection]
+id=bond-slave-enp1s0f0
+uuid=e3078d02-37c7-4a84-a763-afc7368f5415
+type=ethernet
+interface-name=enp1s0f0
+master=bond0
+permissions=
+slave-type=bond
+timestamp=1616430911
+
+[ethernet]
+mac-address-blacklist=

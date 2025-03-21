@@ -1,0 +1,13 @@
+[connection]
+id=bond0
+uuid=a44ddb46-785b-4c83-9eb6-f8c5f9174a2e
+type=bond
+autoconnect-slaves=1
+interface-name=bond0
+master=xenbr0
+permissions=
+slave-type=bridge
+timestamp=1616615892
+
+[bond]
+mode=active-backup
