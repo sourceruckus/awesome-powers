@@ -25,7 +25,7 @@ ff02::2 ip6-allrouters
 
 # put this in here because dnsmasq treats ALL hosts in this domain as local,
 # including the domain itself.
-70.167.22.26 labriola.dyndns.org
+70.183.15.70 labriola.dyndns.org
 
 # and this because cyclic dependency with wg-ruckus interface
 18.189.87.14 vpn.sourceruckus.org
