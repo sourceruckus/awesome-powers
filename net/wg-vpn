@@ -48,10 +48,12 @@ try_interface()
 {
     # raise it
     wg-quick up $1
-    sleep 2
+    sleep 5
 
     # try pinging test ip
-    ping -w2 -R $TEST_IP
+    go="ping -w5 $TEST_IP"
+    echo $go
+    eval $go
     if [ $? -ne 0 ]; then
         echo "$1 is NOT reachable"
         return -1
