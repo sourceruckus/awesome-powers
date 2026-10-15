@@ -35,7 +35,7 @@ unsetopt bgnice
 # /etc/zprofile sources /etc/profile.d files which sets LANG...  arg
 #
 #unset LANG
-LANG=C
+LANG=en_US.UTF-8
 export LANG
 
 
@@ -173,6 +173,8 @@ export LESS=-MRFSX
 #export RSYNC_RSH=ssh
 #export RSH=ssh
 export EDITOR=emacs
+
+export WG_COLOR_MODE=always
 
 export CPUCOUNT=`grep processor /proc/cpuinfo | wc -l`
 
