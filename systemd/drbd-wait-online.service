@@ -22,7 +22,7 @@ Type=oneshot
 #       the interface(s), but we really need to be able to wait for ALL the
 #       interfaces to be up.
 #
-ExecStart=/scrap/awesome-powers/net/wait-for-host 192.168.10.1 192.168.11.1
+ExecStart=/opt/awesome-powers/net/wait-for-host 192.168.10.1 192.168.11.1
 RemainAfterExit=yes
 
 [Install]

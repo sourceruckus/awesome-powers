@@ -3,10 +3,9 @@ you... awesome powers!
 
 Installation:
 
-1. Clone/checkout this repo at /scrap/awesome-powers.  There are hardcoded
-   paths throughout (bad, I know) to simplify installation.  No Makefiles
-   required, these scripts are designed to be run right out of their source
-   tree.
+1. Clone/checkout this repo at /opt/awesome-powers.  There are hardcoded paths
+   throughout (bad, I know) to simplify installation.  No Makefiles required,
+   these scripts are designed to be run right out of their source tree.
 
 2. Symlink desired systemd unit files, NetworkManager dispatchers, config
    files, etc, into the correct system directories.

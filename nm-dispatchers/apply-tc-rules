@@ -9,7 +9,7 @@
 # Automatically run the appropriate tc-rules script when an interface comes up.
 #
 
-AP=/scrap/awesome-powers
+AP=/opt/awesome-powers
 
 shopt -s extglob
 

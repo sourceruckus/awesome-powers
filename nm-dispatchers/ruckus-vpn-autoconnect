@@ -18,11 +18,11 @@ gw=$(route -n | awk '/^0.0.0.0/ {print $NF}')
 case "$2" in
     up)
         echo starting ruckus-vpn
-        /scrap/awesome-powers/net/ruckus-vpn start
+        /opt/awesome-powers/net/ruckus-vpn start
         ;;
     down)
         echo stopping ruckus-vpn
-        /scrap/awesome-powers/net/ruckus-vpn stop
+        /opt/awesome-powers/net/ruckus-vpn stop
         ;;
     *)
         echo "$0: called with unknown action \`$2'" 1>&2

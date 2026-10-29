@@ -16,7 +16,7 @@ Wants=local-fs.target
 
 [Service]
 Type=oneshot
-ExecStart=/scrap/awesome-powers/disk/loopenator
+ExecStart=/opt/awesome-powers/disk/loopenator
 RemainAfterExit=yes
 
 [Install]

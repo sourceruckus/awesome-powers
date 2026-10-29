@@ -19,7 +19,7 @@
 
 # parse our config
 #
-# FIXME: or /scrap/awesome-powers/config/sync/zfs-replication.conf?  or simply
+# FIXME: or /opt/awesome-powers/config/sync/zfs-replication.conf?  or simply
 #        $(dirname $0)/zfs-replication.conf?  or $0.conf?
 #
 . $0.conf

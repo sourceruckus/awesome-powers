@@ -3,7 +3,7 @@
 MAILTO=michael.d.labriola@gmail.com
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-AP=/scrap/awesome-powers
+AP=/opt/awesome-powers
 
 # keep a copy of the dental xray laptop locally for backups.
 #

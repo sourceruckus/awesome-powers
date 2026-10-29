@@ -18,11 +18,11 @@ gw=$(route -n | awk '/^0.0.0.0/ {print $NF}')
 case "$2" in
     up)
         echo starting cah-vpn
-        /scrap/awesome-powers/net/cah-vpn start
+        /opt/awesome-powers/net/cah-vpn start
         ;;
     down)
         echo stopping cah-vpn
-        /scrap/awesome-powers/net/cah-vpn stop
+        /opt/awesome-powers/net/cah-vpn stop
         ;;
     *)
         echo "$0: called with unknown action \`$2'" 1>&2

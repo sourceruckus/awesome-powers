@@ -32,7 +32,7 @@ Type=oneshot
 #       our vlan interface is up.  we have to work around the chance that
 #       srv-router isn't up yet, from a complete cold start.
 #
-ExecStart=/scrap/awesome-powers/net/wait-for-host 10.1.20.1
+ExecStart=/opt/awesome-powers/net/wait-for-host 10.1.20.1
 RemainAfterExit=yes
 
 [Install]

@@ -9,7 +9,7 @@ help:
 
 
 checksyslinks:
-	find / -xdev -path /scrap/awesome-powers -prune -o -type l -printf "%p -> " -exec readlink -m {} \; |grep "/scrap/awesome-powers" 
+	find / -xdev -path /opt/awesome-powers -prune -o -type l -printf "%p -> " -exec readlink -m {} \; |grep "/opt/awesome-powers" 
 
 checklinks:
 	find -L . -type l -printf "%p -> " -exec readlink -m {} \;

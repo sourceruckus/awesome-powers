@@ -11,7 +11,7 @@ Conflicts=libvirtd.service
 Type=oneshot
 RemainAfterExit=true
 ExecStartPre=/bin/grep -q control_d /proc/xen/capabilities
-ExecStart=/scrap/awesome-powers/xen/xl-cond-start-piggy
+ExecStart=/opt/awesome-powers/xen/xl-cond-start-piggy
 
 [Install]
 WantedBy=multi-user.target

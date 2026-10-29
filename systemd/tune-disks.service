@@ -15,7 +15,7 @@ Wants=local-fs.target
 
 [Service]
 Type=oneshot
-ExecStart=/scrap/awesome-powers/disk/tune-disks
+ExecStart=/opt/awesome-powers/disk/tune-disks
 RemainAfterExit=yes
 
 [Install]

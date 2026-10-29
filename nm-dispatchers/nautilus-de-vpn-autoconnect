@@ -18,11 +18,11 @@ gw=$(route -n | awk '/^0.0.0.0/ {print $NF}')
 case "$2" in
     up)
         echo starting nautilus-de-vpn
-        /scrap/awesome-powers/net/nautilus-de-vpn start
+        /opt/awesome-powers/net/nautilus-de-vpn start
         ;;
     down)
         echo stopping nautilus-de-vpn
-        /scrap/awesome-powers/net/nautilus-de-vpn stop
+        /opt/awesome-powers/net/nautilus-de-vpn stop
         ;;
     *)
         echo "$0: called with unknown action \`$2'" 1>&2
