@@ -3,6 +3,10 @@
 # Copyright (c) 2007 LINBIT Information Technologies GmbH
 # Based on the original "block" VBD script by XenSource Inc.
 #
+# Copyright 2026 Michael D Labriola <veggiemike@sourceruckus.org>
+# Original file removed from drbd-utils upstream, where it was released under
+# GNU GPLv2 or later.
+#
 # This script implements the "drbd" VBD type. To use a DRBD resource
 # as a virtual block device, include a line similar to this in your
 # domain xl.cfg(5) configuration:
@@ -103,6 +107,12 @@ canonicalise_mode()
 #    'guest': the device may not be used because it already mounted by a guest
 #             in a way incompatible with the requested mode; or
 #    'ok':    the device may be used.
+#
+# FIXME: maybe print 'cluster' if any other cluster node is primary? this would
+#        prevent us from accidentally starting a domU on multiple nodes and
+#        toasting the filesystem... but might also prevent live-migration...
+#        try it out and test?
+#
 #
 check_sharing()
 {
