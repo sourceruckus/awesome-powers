@@ -1,4 +1,11 @@
 #!/usr/bin/env python
+#
+# Awesome Powers - scripts & config files of pure awesomeness
+#
+# Copyright 2018-2026 Michael D Labriola <veggiemike@sourceruckus.org>
+#
+# Licensed under the GPLv3. See the file COPYING for details.
+#
 
 from __future__ import with_statement
 

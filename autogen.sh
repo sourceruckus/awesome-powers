@@ -1,4 +1,11 @@
 #!/bin/sh
+#
+# Awesome Powers - scripts & config files of pure awesomeness
+#
+# Copyright 2018-2026 Michael D Labriola <veggiemike@sourceruckus.org>
+#
+# Licensed under the GPLv3. See the file COPYING for details.
+#
 
 srcdir=`dirname $0`
 test -z "$srcdir" && srcdir=.

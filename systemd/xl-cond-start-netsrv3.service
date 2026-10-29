@@ -1,3 +1,12 @@
+# -*- conf -*-
+#
+# Awesome Powers - scripts & config files of pure awesomeness
+#
+# Copyright 2018-2026 Michael D Labriola <veggiemike@sourceruckus.org>
+#
+# Licensed under the GPLv3. See the file COPYING for details.
+#
+
 [Unit]
 Description=conditionally start Xen domU netsrv3
 Requires=proc-xen.mount xenstored.service drbd.service
