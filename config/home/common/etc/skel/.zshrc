@@ -32,12 +32,6 @@ unsetopt bgnice
 #setopt printeightbit
 #unsetopt autoparamslash
 
-# /etc/zprofile sources /etc/profile.d files which sets LANG...  arg
-#
-#unset LANG
-LANG=en_US.UTF-8
-export LANG
-
 
 # set up limits
 unlimit
