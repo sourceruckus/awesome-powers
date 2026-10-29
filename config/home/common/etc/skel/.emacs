@@ -8,6 +8,7 @@
 (set-cursor-color "orange")
 
 (set-frame-font "Monospace 14")
+(load-theme 'manoj-dark)
 
 ;; display column numbers
 (column-number-mode t)
